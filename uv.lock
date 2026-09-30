@@ -11,7 +11,7 @@ members = [
 [manifest.dependency-groups]
 dev = [
     { name = "pgserver", marker = "sys_platform != 'win32'", specifier = ">=0.1.4" },
-    { name = "psycopg", extras = ["binary"], specifier = ">=3.1" },
+    { name = "psycopg", extras = ["binary"], specifier = ">=3.3.6" },
     { name = "pytest", specifier = ">=8" },
     { name = "ruff", specifier = ">=0.6" },
 ]
@@ -125,7 +125,7 @@ ui = [
 [package.metadata]
 requires-dist = [
     { name = "morning-erection-ui-runtime", marker = "extra == 'ui'", editable = "packages/wakecore-ui-runtime" },
-    { name = "psycopg", extras = ["binary"], marker = "extra == 'postgres'", specifier = ">=3.1" },
+    { name = "psycopg", extras = ["binary"], marker = "extra == 'postgres'", specifier = ">=3.3.6" },
 ]
 provides-extras = ["postgres", "ui"]
 
