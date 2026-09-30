@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wakecore:schema:ui-runtime:health:v1",
+  "title": "GET /v1/health",
+  "description": "Cheap liveness + protocol negotiation. Clients MUST refuse a runtime whose `protocol` major version they do not speak.",
+  "type": "object", "required": ["ok", "protocol", "runtime_version", "model_configured", "sessions"],
+  "properties": {
+    "ok": {"const": true},
+    "protocol": {"$ref": "common.v1.schema.json#/$defs/protocol"},
+    "runtime_version": {"type": "string"},
+    "model_configured": {"type": "boolean"},
+    "model_ref": {"type": ["string", "null"]},
+    "model_endpoint": {"type": "string", "description": "host the screenshots are sent to (OpenAI or an OpenAI-compatible endpoint)"},
+    "model_egress": {"type": "string", "pattern": "^model:", "description": "the data-egress target a grant and an approval must name for acts on this runtime, e.g. model:openai-computer-use or model:openai-compatible:<host>"},
+    "sessions": {"type": "array", "items": {"$ref": "common.v1.schema.json#/$defs/session_ref"}, "description": "session_refs with an open worker"},
+    "interrupted_on_start": {"type": "integer", "minimum": 0}
+  }
+}

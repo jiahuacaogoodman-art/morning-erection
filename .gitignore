@@ -1,0 +1,11 @@
+.secrets/
+reports/
+.venv*/
+__pycache__/
+.pytest_cache/
+.DS_Store
+dist/
+.ruff_cache/
+node_modules/
+*.egg-info/
+.claude/

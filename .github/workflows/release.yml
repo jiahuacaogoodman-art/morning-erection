@@ -1,0 +1,69 @@
+name: Release
+
+# Push a tag vX.Y.Z. Both distributions are built from the workspace and published with PyPI
+# trusted publishing (no API token in the repository). Configure a trusted publisher for each
+# project on PyPI (owner/repo, workflow "release.yml", environment "pypi") before the first tag.
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+      - name: Tag matches the package versions
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          k=$(uv run --no-project python -c "import re,pathlib;print(re.search(r'__version__ = \"(.+)\"', pathlib.Path('packages/wakecore/src/wakecore/__init__.py').read_text())[1])")
+          u=$(uv run --no-project python -c "import re,pathlib;print(re.search(r'__version__ = \"(.+)\"', pathlib.Path('packages/wakecore-ui-runtime/src/wakecore_ui_runtime/_version.py').read_text())[1])")
+          test "$tag" = "$k" && test "$tag" = "$u" || { echo "tag $tag, kernel $k, ui-runtime $u"; exit 1; }
+      - run: uv build --all-packages --out-dir dist
+      - name: Wheels contain no tests and ship their data files
+        run: |
+          python3 - <<'PY'
+          import glob, zipfile
+          for whl in glob.glob("dist/*.whl"):
+              names = zipfile.ZipFile(whl).namelist()
+              assert not any(n.startswith("tests/") for n in names), whl
+              assert any(n.endswith("py.typed") for n in names), whl
+              if "morning_erection-" in whl:
+                  for need in ("schemas/api_error.v1.schema.json", "sql/0001_init.sql", "grades_demo.json"):
+                      assert any(n.endswith(need) for n in names), (whl, need)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --generate-notes --verify-tag

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/jiahuacaogoodman-art/morning-erection/security/advisories/new
+    about: Report privately. Never in a public issue.
+  - name: Question or idea
+    url: https://github.com/jiahuacaogoodman-art/morning-erection/discussions
+    about: Ask and discuss before you file a feature request.

@@ -1,0 +1,31 @@
+name: Feature request
+description: Propose a change to the kernel, the protocol or the tooling
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please read the non-negotiable rules in CONTRIBUTING.md first. Proposals that touch the state machines,
+        approvals, send-once or replay need an ADR (docs/adr) before code.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and why does WakeCore make it hard today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+  - type: textarea
+    id: guarantees
+    attributes:
+      label: Effect on guarantees
+      description: Does this change who can do what, what is sent where, how many times an effect can happen, or what replay does?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

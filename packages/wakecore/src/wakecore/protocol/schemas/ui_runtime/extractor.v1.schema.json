@@ -1,0 +1,253 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wakecore:schema:ui-runtime:extractor:v1",
+  "title": "Declarative extractor v1 (DOM -> records, deterministic, no model)",
+  "description": "Exactly one of `table` / `list`, and exactly one of `key_attr` / `key_field`. The runtime's validator is authoritative and additionally checks cross-field rules (key_field names a column, patterns compile, `group` exists, defaults match the type). See docs/extractor.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "columns"
+  ],
+  "properties": {
+    "table": {
+      "type": "object",
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "label"
+          ]
+        },
+        {
+          "required": [
+            "selector"
+          ]
+        }
+      ],
+      "properties": {
+        "label": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "selector": {
+          "$ref": "#/$defs/css"
+        }
+      }
+    },
+    "list": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item"
+      ],
+      "properties": {
+        "item": {
+          "$ref": "#/$defs/css"
+        }
+      }
+    },
+    "ready": {
+      "$ref": "#/$defs/css"
+    },
+    "key_attr": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "key_field": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "columns": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "$ref": "#/$defs/column"
+      }
+    },
+    "login": {
+      "$ref": "common.v1.schema.json#/$defs/login_markers"
+    }
+  },
+  "oneOf": [
+    {
+      "required": [
+        "table"
+      ],
+      "not": {
+        "required": [
+          "list"
+        ]
+      }
+    },
+    {
+      "required": [
+        "list",
+        "ready"
+      ],
+      "not": {
+        "required": [
+          "table"
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "css": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "column": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field"
+      ],
+      "properties": {
+        "field": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "headers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          },
+          "description": "table mode: header aliases"
+        },
+        "selector": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "list mode: relative to the item; \"\" = the item itself"
+        },
+        "attr": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "list mode: read this attribute instead of innerText"
+        },
+        "type": {
+          "enum": [
+            "text",
+            "int",
+            "number",
+            "bool",
+            "exists"
+          ]
+        },
+        "true": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "false": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "transform": {
+          "enum": [
+            "lower",
+            "upper"
+          ],
+          "description": "applied before `pattern`"
+        },
+        "pattern": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Python regex, searched in the text; the value is `group` (default 0)"
+        },
+        "group": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9
+        },
+        "default": {
+          "$ref": "common.v1.schema.json#/$defs/scalar",
+          "description": "used only when declared: the cell is missing, the pattern does not match or the value does not parse"
+        }
+      }
+    },
+    "validate_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "extractor"
+      ],
+      "properties": {
+        "extractor": {
+          "type": "object"
+        }
+      }
+    },
+    "validate_response": {
+      "type": "object",
+      "required": [
+        "ok"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "mode": {
+          "enum": [
+            "table",
+            "list"
+          ]
+        },
+        "normalized": {
+          "type": "object"
+        },
+        "error": {
+          "type": "object",
+          "required": [
+            "code",
+            "message"
+          ],
+          "properties": {
+            "code": {
+              "const": "extractor_invalid"
+            },
+            "message": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "required": [
+            "key_attr"
+          ],
+          "not": {
+            "required": [
+              "key_field"
+            ]
+          }
+        },
+        {
+          "required": [
+            "key_field"
+          ],
+          "not": {
+            "required": [
+              "key_attr"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

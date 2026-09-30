@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wakecore:schema:ui-runtime:act-record:v1",
+  "title": "GET /v1/acts/{key}",
+  "description": "The journal record of one act key: what was sent (method + path, never bodies or query strings), what was blocked, the result and the evidence files.",
+  "type": "object",
+  "required": ["key", "status", "attempt", "started_at", "mutating", "blocked", "history", "artifacts"],
+  "properties": {
+    "key": {"type": "string"},
+    "attempt": {"type": ["string", "null"]},
+    "session_ref": {"type": "string"},
+    "status": {"enum": ["in_progress", "finished", "interrupted"]},
+    "started_at": {"type": "number"},
+    "finished_at": {"type": ["number", "null"]},
+    "cancel_requested_at": {"type": ["number", "null"]},
+    "request_digest": {"type": ["string", "null"]},
+    "mutating": {"type": "array", "items": {"$ref": "common.v1.schema.json#/$defs/request_log_entry"}},
+    "blocked": {"type": "array", "items": {"$ref": "common.v1.schema.json#/$defs/request_log_entry"}},
+    "result": {"anyOf": [{"type": "null"}, {"$ref": "act.v1.schema.json#/$defs/response"}]},
+    "history": {"type": "array", "items": {"type": "object"}},
+    "artifacts": {
+      "type": "object", "required": ["screenshots", "trace"],
+      "properties": {
+        "ref": {"type": ["string", "null"], "description": "relative to the runtime's state directory"},
+        "screenshots": {"type": "array", "items": {"type": "string", "pattern": "^step-[0-9]{3}\\.png$"}},
+        "trace": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

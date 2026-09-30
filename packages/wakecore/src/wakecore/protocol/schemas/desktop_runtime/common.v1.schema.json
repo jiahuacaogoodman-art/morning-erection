@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wakecore:schema:desktop-runtime:common:v1",
+  "title": "Desktop Runtime protocol v1: shared definitions",
+  "$defs": {
+    "protocol": {
+      "const": "wakecore.desktop-runtime/1",
+      "description": "Protocol identifier; the major version is the number after the slash."
+    },
+    "bundle_id": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9-]*(\\.[A-Za-z0-9-]+)+$",
+      "description": "A macOS bundle identifier, e.g. com.apple.calculator. Apps are always named by bundle ID, never by display name."
+    },
+    "apps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/$defs/bundle_id"
+      },
+      "description": "The allow-list the caller's grant covers. `app` must be in it."
+    },
+    "act_key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300,
+      "description": "The kernel's effect_key. An act is performed at most once per key."
+    },
+    "usage": {
+      "type": "object",
+      "properties": {
+        "input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "outcome": {
+      "enum": [
+        "SUCCESS",
+        "AUTH_REQUIRED",
+        "SCHEMA_INVALID",
+        "UNAVAILABLE"
+      ]
+    },
+    "scalar": {
+      "type": [
+        "string",
+        "integer",
+        "number",
+        "boolean",
+        "null"
+      ]
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/scalar"
+      }
+    },
+    "action_log_entry": {
+      "type": "object",
+      "required": [
+        "at"
+      ],
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "element": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "at": {
+          "type": "number"
+        }
+      },
+      "description": "What kind of action, on which element index: never the typed text or the value set."
+    },
+    "bridge_status": {
+      "type": "object",
+      "required": [
+        "ok"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": "string"
+        },
+        "server": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "server_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "detail": {
+          "type": "object",
+          "description": "known fields only (brokerVerified, permissionMode, brokerVersion, clientBuild); never local paths"
+        }
+      }
+    }
+  }
+}

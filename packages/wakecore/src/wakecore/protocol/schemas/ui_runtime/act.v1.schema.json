@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wakecore:schema:ui-runtime:act:v1",
+  "title": "POST /v1/act",
+  "description": "Guarded Computer Use on one page (the hand). At most once per `key`: a repeat returns the journalled result (`deduplicated: true`); the same key with a different request (session_ref, goal, start_url, origins, login) is 409 idempotency_key_reused. A previous attempt that provably sent nothing may be superseded by a request with a new `attempt`. `completed` is only the model's claim: clients MUST verify with a fresh observation.",
+  "$ref": "#/$defs/request",
+  "$defs": {
+    "request": {
+      "type": "object", "additionalProperties": false, "required": ["key", "session_ref", "goal", "start_url", "origins"],
+      "properties": {
+        "key": {"$ref": "common.v1.schema.json#/$defs/act_key"},
+        "attempt": {"type": ["string", "null"], "maxLength": 300},
+        "session_ref": {"$ref": "common.v1.schema.json#/$defs/session_ref"},
+        "goal": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "start_url": {"$ref": "common.v1.schema.json#/$defs/url"},
+        "origins": {"$ref": "common.v1.schema.json#/$defs/origins"},
+        "login": {"anyOf": [{"type": "null"}, {"$ref": "common.v1.schema.json#/$defs/login_markers"}]},
+        "timeout_s": {"type": "number", "minimum": 1, "maximum": 3600},
+        "max_steps": {"type": "integer", "minimum": 1, "maximum": 200},
+        "model_egress": {"type": "string", "pattern": "^model:", "maxLength": 300,
+                         "description": "the model egress the caller's approval covers; if present and different from the runtime's (see health), the act is refused with 409 model_egress_mismatch before anything is sent. Not part of the request digest."}
+      }
+    },
+    "status": {"enum": ["completed", "incomplete", "needs_human", "refused", "model_error", "error", "canceled",
+                        "in_progress", "interrupted"]},
+    "response": {
+      "type": "object", "required": ["status", "mutating_requests"],
+      "properties": {
+        "status": {"$ref": "#/$defs/status"},
+        "reason": {"type": "string"},
+        "action_space": {"const": "wakecore.computer/1"},
+        "steps": {"type": "integer", "minimum": 0},
+        "actions_executed": {"type": "integer", "minimum": 0},
+        "mutating_requests": {"type": "integer", "minimum": 0, "description": "writes that may have reached the site (journalled before release)"},
+        "blocked_requests": {"type": "integer", "minimum": 0},
+        "blocked": {"type": "array", "items": {"type": "string"}},
+        "final_url": {"type": "string"},
+        "summary": {"type": "string"},
+        "usage": {"$ref": "common.v1.schema.json#/$defs/usage"},
+        "model_calls": {"type": "integer", "minimum": 0},
+        "model_ref": {"type": ["string", "null"]},
+        "error_detail": {"type": "string"},
+        "artifacts_ref": {"type": "string"},
+        "deduplicated": {"type": "boolean"},
+        "journal_status": {"enum": ["in_progress", "finished", "interrupted"]}
+      }
+    },
+    "status_response": {
+      "type": "object", "required": ["status", "mutating_requests"],
+      "description": "GET /v1/act/status?key= (legacy, kept): never_received | in_progress | finished | interrupted",
+      "properties": {
+        "status": {"enum": ["never_received", "in_progress", "finished", "interrupted"]},
+        "mutating_requests": {"type": "integer", "minimum": 0},
+        "attempt": {"type": ["string", "null"]},
+        "result_status": {"type": ["string", "null"]}
+      }
+    },
+    "cancel_response": {
+      "type": "object", "required": ["key", "cancel_requested", "status"],
+      "properties": {
+        "key": {"type": "string"},
+        "cancel_requested": {"type": "boolean", "description": "false when the act had already ended"},
+        "status": {"enum": ["queued", "in_progress", "finished", "interrupted"]}
+      }
+    }
+  }
+}

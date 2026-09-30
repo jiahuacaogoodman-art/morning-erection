@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wakecore:schema:ui-runtime:verify:v1",
+  "title": "POST /v1/verify",
+  "description": "A fresh observation of one record (a new page, never the one an act drove). Whether the goal holds is judged by the client.",
+  "$ref": "#/$defs/request",
+  "$defs": {
+    "request": {
+      "type": "object", "additionalProperties": false, "required": ["session_ref", "url", "origins", "extractor", "record_id"],
+      "properties": {
+        "session_ref": {"$ref": "common.v1.schema.json#/$defs/session_ref"},
+        "url": {"$ref": "common.v1.schema.json#/$defs/url"},
+        "origins": {"$ref": "common.v1.schema.json#/$defs/origins"},
+        "extractor": {"type": "object"},
+        "record_id": {"type": "string", "minLength": 1, "maxLength": 500},
+        "timeouts": {"$ref": "common.v1.schema.json#/$defs/timeouts"}
+      }
+    },
+    "response": {
+      "type": "object", "required": ["outcome", "record", "present", "error_code"],
+      "properties": {
+        "outcome": {"$ref": "common.v1.schema.json#/$defs/outcome"},
+        "record": {"anyOf": [{"type": "null"}, {"$ref": "common.v1.schema.json#/$defs/record"}]},
+        "present": {"type": "boolean"},
+        "content_digest": {"type": "string"},
+        "error_code": {"type": ["string", "null"]},
+        "url": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

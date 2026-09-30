@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wakecore:schema:ui-runtime:common:v1",
+  "title": "UI Runtime protocol v1: shared definitions",
+  "$defs": {
+    "protocol": {"const": "wakecore.ui-runtime/1", "description": "Protocol identifier; the major version is the number after the slash."},
+    "session_ref": {
+      "type": "string", "pattern": "^[A-Za-z0-9_.-]{1,64}$",
+      "description": "Opaque name of a browser profile a human logged into. Never a cookie or a credential."
+    },
+    "url": {"type": "string", "minLength": 1, "maxLength": 2000, "pattern": "^https?://"},
+    "origins": {
+      "type": "array", "minItems": 1, "maxItems": 20,
+      "items": {"type": "string", "minLength": 1, "maxLength": 300, "pattern": "^https?://[^/]+$"},
+      "description": "scheme://host[:port]. Every request the browser makes (including subresources) must be inside this list."
+    },
+    "act_key": {
+      "type": "string", "minLength": 1, "maxLength": 300,
+      "description": "The kernel's effect_key. An act is performed at most once per key."
+    },
+    "timeouts": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "navigation_s": {"type": "number", "minimum": 1, "maximum": 120},
+        "ready_s": {"type": "number", "minimum": 0, "maximum": 120}
+      }
+    },
+    "login_markers": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "url_contains": {"type": "array", "maxItems": 20, "items": {"type": "string", "minLength": 1, "maxLength": 200}},
+        "title_contains": {"type": "array", "maxItems": 20, "items": {"type": "string", "minLength": 1, "maxLength": 200}},
+        "selector": {"type": "string", "minLength": 1, "maxLength": 500}
+      }
+    },
+    "usage": {
+      "type": "object",
+      "properties": {"input_tokens": {"type": "integer", "minimum": 0}, "output_tokens": {"type": "integer", "minimum": 0}}
+    },
+    "outcome": {"enum": ["SUCCESS", "AUTH_REQUIRED", "SCHEMA_INVALID", "UNAVAILABLE"]},
+    "scalar": {"type": ["string", "integer", "number", "boolean", "null"]},
+    "record": {"type": "object", "additionalProperties": {"$ref": "#/$defs/scalar"}},
+    "request_log_entry": {
+      "type": "object", "required": ["method", "url"],
+      "properties": {
+        "method": {"type": "string"},
+        "url": {"type": "string", "description": "scheme://host/path only: no query string, no body."},
+        "response_status": {"type": ["integer", "null"]},
+        "reason": {"type": "string"},
+        "at": {"type": "number"}
+      }
+    }
+  }
+}

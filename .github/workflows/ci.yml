@@ -1,0 +1,135 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_FROZEN: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
+
+jobs:
+  # The kernel must work with nothing but the standard library: install only
+  # packages/wakecore into a bare venv and run every test that does not need the sidecar.
+  kernel-stdlib:
+    name: kernel (stdlib only, ${{ matrix.os }}, py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install the kernel alone
+        run: |
+          python -m venv /tmp/kernel
+          /tmp/kernel/bin/python -m pip install --upgrade pip
+          /tmp/kernel/bin/python -m pip install ./packages/wakecore pytest
+      - name: No optional dependency sneaks in
+        run: |
+          /tmp/kernel/bin/python - <<'PY'
+          import sys, importlib
+          for m in ("wakecore", "wakecore.app.cli.main", "wakecore.app.api.wsgi", "wakecore.plugins",
+                    "wakecore.testing.conformance", "wakecore.adapters.ui_runtime.client"):
+              importlib.import_module(m)
+          bad = sorted(m for m in sys.modules if m.split(".")[0] in ("playwright", "psycopg", "openai"))
+          assert not bad, bad
+          PY
+      # the checkout has no top-level wakecore/ (sources live under packages/), so the
+      # installed wheel is what gets imported
+      - name: Tests (no sidecar, no PostgreSQL)
+        run: /tmp/kernel/bin/python -m pytest -q -p no:cacheprovider --ignore=tests/ui --ignore=tests/real
+      - name: Demo
+        run: /tmp/kernel/bin/wakecore demo
+
+  full:
+    name: lint, tests, generated specs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --all-packages --all-extras --group dev
+      - run: uv run ruff check
+      - name: OpenAPI documents match the route tables
+        run: uv run python scripts/gen_openapi.py --check
+      - run: uv run pytest -q --ignore=tests/ui
+
+  postgres:
+    name: PostgreSQL gate (M2)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGPASSWORD: postgres
+      # the application role must not be a superuser (RFC §9.4); the gate checks it
+      WAKECORE_PG_DSN: postgresql://wk_app:wk_app@localhost:5432/wk_test
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Roles and database
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE wk_app LOGIN PASSWORD 'wk_app' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+          CREATE DATABASE wk_test;
+          GRANT CONNECT, CREATE ON DATABASE wk_test TO wk_app;
+          SQL
+      - run: uv sync --all-packages --all-extras --group dev
+      - name: M2 concurrency gate
+        run: uv run pytest -q tests/integration_postgres
+      - name: Every harness test on PostgreSQL
+        env:
+          WAKECORE_TEST_BACKEND: postgres
+        run: uv run pytest -q --ignore=tests/ui
+
+  ui:
+    name: browser sidecar (real Chromium, simulated sites and model)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --all-packages --all-extras --group dev
+      - name: Playwright version
+        id: pw
+        run: echo "version=$(uv run python -c 'from importlib.metadata import version; print(version("playwright"))')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+      - run: uv run playwright install --with-deps chromium
+      - run: uv run pytest -q tests/ui
+      - name: Keep artifacts of failed runs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-artifacts
+          path: /tmp/pytest-of-*/**/artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # tests/real (public websites, real model, API key) never runs in CI.

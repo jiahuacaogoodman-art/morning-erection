@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wakecore:schema:api-error:v1",
+  "title": "WakeCore API error (RFC §15)",
+  "description": "Every non-2xx response. Never echoes tokens or request bodies. trace_id is also sent as X-Trace-Id.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["error"],
+  "properties": {
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable", "details", "trace_id"],
+      "properties": {
+        "code": {"enum": [
+          "KERNEL_ERROR", "NOT_FOUND", "TASK_NOT_ACTIVE", "TASK_EXPIRED", "SOURCE_AUTH_REQUIRED",
+          "SOURCE_COVERAGE_INSUFFICIENT", "SCHEMA_MISMATCH", "POLICY_DENIED", "APPROVAL_REQUIRED",
+          "APPROVAL_STALE", "BUDGET_DEFERRED", "STALE_LEASE", "SIDE_EFFECT_UNKNOWN", "VERSION_CONFLICT",
+          "INVALID_TRANSITION", "IDEMPOTENCY_CONFLICT", "IDENTITY_CONFLICT", "UNAUTHENTICATED",
+          "METHOD_NOT_ALLOWED", "PAYLOAD_TOO_LARGE", "INTERNAL"
+        ]},
+        "message": {"type": "string"},
+        "retryable": {"type": "boolean"},
+        "details": {"type": "object"},
+        "trace_id": {"type": "string", "pattern": "^[A-Za-z0-9_.-]{1,64}$"}
+      }
+    }
+  }
+}

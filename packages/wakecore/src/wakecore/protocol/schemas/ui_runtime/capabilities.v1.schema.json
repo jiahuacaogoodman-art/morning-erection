@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wakecore:schema:ui-runtime:capabilities:v1",
+  "title": "GET /v1/capabilities",
+  "description": "What this runtime implements, so a client can check a task before it is scheduled.",
+  "type": "object", "required": ["protocol", "runtime_version", "endpoints", "extractor", "act", "limits"],
+  "properties": {
+    "protocol": {"$ref": "common.v1.schema.json#/$defs/protocol"},
+    "runtime_version": {"type": "string"},
+    "endpoints": {"type": "array", "items": {"type": "string", "pattern": "^(GET|POST) /"}},
+    "extractor": {
+      "type": "object", "required": ["modes", "types", "transforms"],
+      "properties": {
+        "modes": {"type": "array", "items": {"enum": ["table", "list"]}},
+        "types": {"type": "array", "items": {"type": "string"}},
+        "transforms": {"type": "array", "items": {"type": "string"}},
+        "column_options": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "act": {
+      "type": "object", "required": ["available", "action_space", "cancel"],
+      "properties": {
+        "available": {"type": "boolean", "description": "a model is configured"},
+        "action_space": {"const": "wakecore.computer/1"},
+        "variant": {"enum": ["ga", "preview", "function"], "description": "function = the actions as a plain function tool, for endpoints without the hosted computer tool"},
+        "history": {"enum": ["auto", "server", "client"], "description": "how turns are chained: previous_response_id (server) or the full conversation resent by the runtime (client)"},
+        "model_ref": {"type": ["string", "null"]},
+        "model_endpoint": {"type": "string"},
+        "model_egress": {"type": "string", "pattern": "^model:"},
+        "cancel": {"type": "boolean"},
+        "max_steps_limit": {"type": "integer"},
+        "guards": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "limits": {
+      "type": "object", "required": ["max_body_bytes"],
+      "properties": {"max_body_bytes": {"type": "integer"}, "timeouts_max_s": {"type": "number"}}
+    }
+  }
+}

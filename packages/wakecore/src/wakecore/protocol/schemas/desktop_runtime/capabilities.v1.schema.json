@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wakecore:schema:desktop-runtime:capabilities:v1",
+  "title": "GET /v1/capabilities",
+  "type": "object",
+  "required": [
+    "protocol",
+    "runtime_version",
+    "endpoints",
+    "extractor",
+    "act",
+    "limits"
+  ],
+  "properties": {
+    "protocol": {
+      "$ref": "common.v1.schema.json#/$defs/protocol"
+    },
+    "runtime_version": {
+      "type": "string"
+    },
+    "endpoints": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(GET|POST) /"
+      }
+    },
+    "extractor": {
+      "type": "object",
+      "required": [
+        "modes",
+        "types",
+        "transforms"
+      ],
+      "properties": {
+        "modes": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "records",
+              "list"
+            ]
+          }
+        },
+        "types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "transforms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "column_options": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "attrs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "selector_keys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "act": {
+      "type": "object",
+      "required": [
+        "available",
+        "action_space",
+        "cancel"
+      ],
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "action_space": {
+          "const": "wakecore.desktop-ax/1"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "history": {
+          "enum": [
+            "auto",
+            "server",
+            "client"
+          ]
+        },
+        "model_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "model_endpoint": {
+          "type": "string"
+        },
+        "model_egress": {
+          "type": "string",
+          "pattern": "^model:"
+        },
+        "cancel": {
+          "type": "boolean"
+        },
+        "max_steps_limit": {
+          "type": "integer"
+        },
+        "guards": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "required": [
+        "max_body_bytes"
+      ],
+      "properties": {
+        "max_body_bytes": {
+          "type": "integer"
+        },
+        "timeouts_max_s": {
+          "type": "number"
+        }
+      }
+    }
+  }
+}

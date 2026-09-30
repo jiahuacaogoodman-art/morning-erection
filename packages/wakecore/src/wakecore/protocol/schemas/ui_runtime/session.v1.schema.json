@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wakecore:schema:ui-runtime:session:v1",
+  "title": "Browser sessions: GET /v1/sessions, GET /v1/sessions/{ref}, POST /v1/sessions/{ref}/release",
+  "description": "Never returns cookies, profile paths or page content. `closed` = no browser running for it (a human may log in with the profile); `busy` = an operation is running.",
+  "$ref": "#/$defs/session",
+  "$defs": {
+    "session": {
+      "type": "object", "additionalProperties": false, "required": ["session_ref", "state", "profile_exists", "last_used_at"],
+      "properties": {
+        "session_ref": {"$ref": "common.v1.schema.json#/$defs/session_ref"},
+        "state": {"enum": ["open", "closed", "busy"]},
+        "profile_exists": {"type": "boolean"},
+        "last_used_at": {"type": ["number", "null"]}
+      }
+    },
+    "list_response": {
+      "type": "object", "required": ["sessions"],
+      "properties": {"sessions": {"type": "array", "items": {"$ref": "#/$defs/session"}}}
+    },
+    "release_request": {
+      "type": "object", "additionalProperties": false, "required": ["session_ref"],
+      "description": "legacy POST /v1/sessions/release body",
+      "properties": {"session_ref": {"$ref": "common.v1.schema.json#/$defs/session_ref"}}
+    },
+    "release_response": {
+      "type": "object", "required": ["released"],
+      "properties": {"session_ref": {"type": "string"}, "released": {"type": "boolean"}}
+    }
+  }
+}

@@ -1,0 +1,1470 @@
+{
+  "components": {
+    "headers": {
+      "Protocol": {
+        "description": "Protocol family and major version, e.g. wakecore.desktop-runtime/1",
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "schemas": {
+      "act.v1": {
+        "$defs": {
+          "cancel_response": {
+            "properties": {
+              "cancel_requested": {
+                "type": "boolean"
+              },
+              "key": {
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "queued",
+                  "in_progress",
+                  "finished",
+                  "interrupted"
+                ]
+              }
+            },
+            "required": [
+              "key",
+              "cancel_requested",
+              "status"
+            ],
+            "type": "object"
+          },
+          "request": {
+            "additionalProperties": false,
+            "properties": {
+              "app": {
+                "$ref": "#/components/schemas/common.v1/$defs/bundle_id"
+              },
+              "apps": {
+                "$ref": "#/components/schemas/common.v1/$defs/apps"
+              },
+              "attempt": {
+                "maxLength": 300,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "goal": {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              "key": {
+                "$ref": "#/components/schemas/common.v1/$defs/act_key"
+              },
+              "max_steps": {
+                "maximum": 200,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "model_egress": {
+                "description": "the model egress the caller's approval covers; a different one is 409 model_egress_mismatch before anything is sent. Not part of the request digest.",
+                "maxLength": 300,
+                "pattern": "^model:",
+                "type": "string"
+              },
+              "timeout_s": {
+                "maximum": 3600,
+                "minimum": 1,
+                "type": "number"
+              }
+            },
+            "required": [
+              "key",
+              "app",
+              "apps",
+              "goal"
+            ],
+            "type": "object"
+          },
+          "response": {
+            "properties": {
+              "action_space": {
+                "const": "wakecore.desktop-ax/1"
+              },
+              "actions_executed": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "app": {
+                "type": "string"
+              },
+              "artifacts_ref": {
+                "type": "string"
+              },
+              "blocked": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "blocked_actions": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "deduplicated": {
+                "type": "boolean"
+              },
+              "error_detail": {
+                "type": "string"
+              },
+              "final_window": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "journal_status": {
+                "enum": [
+                  "in_progress",
+                  "finished",
+                  "interrupted"
+                ]
+              },
+              "model_calls": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "model_ref": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "mutating_actions": {
+                "description": "actions that may have reached the app (journalled before they were sent)",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "status": {
+                "$ref": "#/components/schemas/act.v1/$defs/status"
+              },
+              "steps": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "usage": {
+                "$ref": "#/components/schemas/common.v1/$defs/usage"
+              }
+            },
+            "required": [
+              "status",
+              "mutating_actions"
+            ],
+            "type": "object"
+          },
+          "status": {
+            "enum": [
+              "completed",
+              "incomplete",
+              "needs_human",
+              "refused",
+              "model_error",
+              "error",
+              "canceled",
+              "in_progress",
+              "interrupted"
+            ]
+          },
+          "status_response": {
+            "properties": {
+              "attempt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "mutating_actions": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "result_status": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status": {
+                "enum": [
+                  "never_received",
+                  "in_progress",
+                  "finished",
+                  "interrupted"
+                ]
+              }
+            },
+            "required": [
+              "status",
+              "mutating_actions"
+            ],
+            "type": "object"
+          }
+        },
+        "$ref": "#/components/schemas/act.v1/$defs/request",
+        "description": "Guarded model loop over one app (the hand), acting on accessibility elements by index. At most once per `key`: a repeat returns the journalled result (`deduplicated: true`); the same key with a different request (app, apps, goal) is 409 idempotency_key_reused. `completed` is only the model's claim: clients MUST verify with a fresh observation.",
+        "title": "POST /v1/act"
+      },
+      "act_record.v1": {
+        "description": "The journal record of one act key: which kinds of actions were sent (never typed text), which were refused, the result and the evidence files.",
+        "properties": {
+          "artifacts": {
+            "properties": {
+              "ref": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "screenshots": {
+                "items": {
+                  "pattern": "^step-[0-9]{3}\\.(png|jpg)$",
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "screenshots"
+            ],
+            "type": "object"
+          },
+          "attempt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "blocked": {
+            "items": {
+              "$ref": "#/components/schemas/common.v1/$defs/action_log_entry"
+            },
+            "type": "array"
+          },
+          "cancel_requested_at": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "finished_at": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "history": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "key": {
+            "type": "string"
+          },
+          "mutating": {
+            "items": {
+              "$ref": "#/components/schemas/common.v1/$defs/action_log_entry"
+            },
+            "type": "array"
+          },
+          "request_digest": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "result": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/act.v1/$defs/response"
+              }
+            ]
+          },
+          "session_ref": {
+            "description": "the app's bundle ID",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "started_at": {
+            "type": "number"
+          },
+          "status": {
+            "enum": [
+              "in_progress",
+              "finished",
+              "interrupted"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "status",
+          "attempt",
+          "started_at",
+          "mutating",
+          "blocked",
+          "history",
+          "artifacts"
+        ],
+        "title": "GET /v1/acts/{key}",
+        "type": "object"
+      },
+      "capabilities.v1": {
+        "properties": {
+          "act": {
+            "properties": {
+              "action_space": {
+                "const": "wakecore.desktop-ax/1"
+              },
+              "actions": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "available": {
+                "type": "boolean"
+              },
+              "cancel": {
+                "type": "boolean"
+              },
+              "guards": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "history": {
+                "enum": [
+                  "auto",
+                  "server",
+                  "client"
+                ]
+              },
+              "max_steps_limit": {
+                "type": "integer"
+              },
+              "model_egress": {
+                "pattern": "^model:",
+                "type": "string"
+              },
+              "model_endpoint": {
+                "type": "string"
+              },
+              "model_ref": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "available",
+              "action_space",
+              "cancel"
+            ],
+            "type": "object"
+          },
+          "endpoints": {
+            "items": {
+              "pattern": "^(GET|POST) /",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "extractor": {
+            "properties": {
+              "attrs": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "column_options": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "modes": {
+                "items": {
+                  "enum": [
+                    "records",
+                    "list"
+                  ]
+                },
+                "type": "array"
+              },
+              "selector_keys": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "transforms": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "types": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "modes",
+              "types",
+              "transforms"
+            ],
+            "type": "object"
+          },
+          "limits": {
+            "properties": {
+              "max_body_bytes": {
+                "type": "integer"
+              },
+              "timeouts_max_s": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "max_body_bytes"
+            ],
+            "type": "object"
+          },
+          "protocol": {
+            "$ref": "#/components/schemas/common.v1/$defs/protocol"
+          },
+          "runtime_version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "protocol",
+          "runtime_version",
+          "endpoints",
+          "extractor",
+          "act",
+          "limits"
+        ],
+        "title": "GET /v1/capabilities",
+        "type": "object"
+      },
+      "common.v1": {
+        "$defs": {
+          "act_key": {
+            "description": "The kernel's effect_key. An act is performed at most once per key.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "action_log_entry": {
+            "description": "What kind of action, on which element index: never the typed text or the value set.",
+            "properties": {
+              "at": {
+                "type": "number"
+              },
+              "element": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "at"
+            ],
+            "type": "object"
+          },
+          "apps": {
+            "description": "The allow-list the caller's grant covers. `app` must be in it.",
+            "items": {
+              "$ref": "#/components/schemas/common.v1/$defs/bundle_id"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "type": "array"
+          },
+          "bridge_status": {
+            "properties": {
+              "detail": {
+                "description": "known fields only (brokerVerified, permissionMode, brokerVersion, clientBuild); never local paths",
+                "type": "object"
+              },
+              "error": {
+                "type": "string"
+              },
+              "ok": {
+                "type": "boolean"
+              },
+              "server": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "server_version": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "ok"
+            ],
+            "type": "object"
+          },
+          "bundle_id": {
+            "description": "A macOS bundle identifier, e.g. com.apple.calculator. Apps are always named by bundle ID, never by display name.",
+            "maxLength": 255,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9-]*(\\.[A-Za-z0-9-]+)+$",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "SUCCESS",
+              "AUTH_REQUIRED",
+              "SCHEMA_INVALID",
+              "UNAVAILABLE"
+            ]
+          },
+          "protocol": {
+            "const": "wakecore.desktop-runtime/1",
+            "description": "Protocol identifier; the major version is the number after the slash."
+          },
+          "record": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/common.v1/$defs/scalar"
+            },
+            "type": "object"
+          },
+          "scalar": {
+            "type": [
+              "string",
+              "integer",
+              "number",
+              "boolean",
+              "null"
+            ]
+          },
+          "usage": {
+            "properties": {
+              "input_tokens": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "output_tokens": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "title": "Desktop Runtime protocol v1: shared definitions"
+      },
+      "error.v1": {
+        "additionalProperties": false,
+        "description": "Every non-2xx response. Same envelope as the UI Runtime protocol.",
+        "properties": {
+          "error": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "enum": [
+                  "unauthorised",
+                  "not_found",
+                  "method_not_allowed",
+                  "bad_body",
+                  "payload_too_large",
+                  "invalid_request",
+                  "idempotency_key_reused",
+                  "model_egress_mismatch",
+                  "app_outside_scope",
+                  "desktop_busy",
+                  "act_not_found",
+                  "runtime_timeout",
+                  "internal"
+                ]
+              },
+              "details": {
+                "type": "object"
+              },
+              "message": {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "Desktop Runtime protocol v1: error envelope",
+        "type": "object"
+      },
+      "extractor.v1": {
+        "$defs": {
+          "column": {
+            "additionalProperties": false,
+            "properties": {
+              "attr": {
+                "enum": [
+                  "head",
+                  "value",
+                  "description",
+                  "help",
+                  "id"
+                ]
+              },
+              "default": {
+                "$ref": "#/components/schemas/common.v1/$defs/scalar"
+              },
+              "false": {
+                "type": "string"
+              },
+              "field": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "group": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "node": {
+                "$ref": "#/components/schemas/extractor.v1/$defs/selector"
+              },
+              "pattern": {
+                "type": "string"
+              },
+              "transform": {
+                "type": "string"
+              },
+              "true": {
+                "type": "string"
+              },
+              "type": {
+                "enum": [
+                  "text",
+                  "int",
+                  "number",
+                  "bool",
+                  "exists"
+                ]
+              }
+            },
+            "required": [
+              "field"
+            ],
+            "type": "object"
+          },
+          "selector": {
+            "additionalProperties": false,
+            "minProperties": 1,
+            "properties": {
+              "description": {
+                "maxLength": 500,
+                "type": "string"
+              },
+              "head": {
+                "maxLength": 500,
+                "type": "string"
+              },
+              "head_regex": {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              "help": {
+                "maxLength": 500,
+                "type": "string"
+              },
+              "id": {
+                "maxLength": 500,
+                "type": "string"
+              },
+              "nth": {
+                "maximum": 1000,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "under": {
+                "$ref": "#/components/schemas/extractor.v1/$defs/selector"
+              },
+              "value": {
+                "maxLength": 500,
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "validate_request": {
+            "additionalProperties": false,
+            "properties": {
+              "extractor": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "extractor"
+            ],
+            "type": "object"
+          },
+          "validate_response": {
+            "properties": {
+              "error": {
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "code",
+                  "message"
+                ],
+                "type": "object"
+              },
+              "mode": {
+                "enum": [
+                  "records",
+                  "list"
+                ]
+              },
+              "normalized": {
+                "type": "object"
+              },
+              "ok": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "ok"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Exactly one of `records` / `list`. Elements are found by what they are (id, description, head, ...), never by index; a selector matching several elements without `nth` is an error. The runtime's validator is authoritative. See docs/extractor.md.",
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/extractor.v1/$defs/column"
+            },
+            "maxItems": 32,
+            "minItems": 1,
+            "type": "array"
+          },
+          "key_field": {
+            "type": "string"
+          },
+          "list": {
+            "additionalProperties": false,
+            "properties": {
+              "item": {
+                "$ref": "#/components/schemas/extractor.v1/$defs/selector"
+              }
+            },
+            "required": [
+              "item"
+            ],
+            "type": "object"
+          },
+          "login": {
+            "$ref": "#/components/schemas/extractor.v1/$defs/selector"
+          },
+          "ready": {
+            "$ref": "#/components/schemas/extractor.v1/$defs/selector"
+          },
+          "records": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "columns": {
+                  "items": {
+                    "$ref": "#/components/schemas/extractor.v1/$defs/column"
+                  },
+                  "maxItems": 32,
+                  "minItems": 1,
+                  "type": "array"
+                },
+                "id": {
+                  "maxLength": 200,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "columns"
+              ],
+              "type": "object"
+            },
+            "maxItems": 64,
+            "minItems": 1,
+            "type": "array"
+          },
+          "window": {
+            "additionalProperties": false,
+            "properties": {
+              "title": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "title_contains": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "ready"
+        ],
+        "title": "Desktop extractor v1 (accessibility tree -> records, deterministic, no model)",
+        "type": "object"
+      },
+      "health.v1": {
+        "description": "Liveness + protocol negotiation + the bridge's status. Clients MUST refuse a runtime whose `protocol` major version they do not speak.",
+        "properties": {
+          "bridge": {
+            "$ref": "#/components/schemas/common.v1/$defs/bridge_status"
+          },
+          "interrupted_on_start": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "model_configured": {
+            "type": "boolean"
+          },
+          "model_egress": {
+            "pattern": "^model:",
+            "type": "string"
+          },
+          "model_endpoint": {
+            "description": "host the accessibility trees and screenshots are sent to",
+            "type": "string"
+          },
+          "model_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ok": {
+            "const": true
+          },
+          "protocol": {
+            "$ref": "#/components/schemas/common.v1/$defs/protocol"
+          },
+          "runtime_version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "protocol",
+          "runtime_version",
+          "model_configured",
+          "bridge"
+        ],
+        "title": "GET /v1/health",
+        "type": "object"
+      },
+      "observe.v1": {
+        "$defs": {
+          "request": {
+            "additionalProperties": false,
+            "properties": {
+              "app": {
+                "$ref": "#/components/schemas/common.v1/$defs/bundle_id"
+              },
+              "apps": {
+                "$ref": "#/components/schemas/common.v1/$defs/apps"
+              },
+              "extractor": {
+                "description": "extractor.v1.schema.json; an invalid one is outcome SCHEMA_INVALID",
+                "type": "object"
+              }
+            },
+            "required": [
+              "app",
+              "apps",
+              "extractor"
+            ],
+            "type": "object"
+          },
+          "response": {
+            "properties": {
+              "app": {
+                "type": "string"
+              },
+              "content_digest": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "detail": {
+                "type": "string"
+              },
+              "error_code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "outcome": {
+                "$ref": "#/components/schemas/common.v1/$defs/outcome"
+              },
+              "records": {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/common.v1/$defs/record"
+                },
+                "type": "object"
+              },
+              "window": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "outcome",
+              "records",
+              "error_code"
+            ],
+            "type": "object"
+          }
+        },
+        "$ref": "#/components/schemas/observe.v1/$defs/request",
+        "description": "Deterministic read of one app's accessibility tree (the eye): no model, no action. A failed read is an outcome in a 200 response. `app` outside `apps` is 403 app_outside_scope.",
+        "title": "POST /v1/observe"
+      },
+      "verify.v1": {
+        "$defs": {
+          "request": {
+            "additionalProperties": false,
+            "properties": {
+              "app": {
+                "$ref": "#/components/schemas/common.v1/$defs/bundle_id"
+              },
+              "apps": {
+                "$ref": "#/components/schemas/common.v1/$defs/apps"
+              },
+              "extractor": {
+                "description": "extractor.v1.schema.json; an invalid one is outcome SCHEMA_INVALID",
+                "type": "object"
+              },
+              "record_id": {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "app",
+              "apps",
+              "extractor",
+              "record_id"
+            ],
+            "type": "object"
+          },
+          "response": {
+            "properties": {
+              "app": {
+                "type": "string"
+              },
+              "content_digest": {
+                "type": "string"
+              },
+              "error_code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "outcome": {
+                "$ref": "#/components/schemas/common.v1/$defs/outcome"
+              },
+              "present": {
+                "type": "boolean"
+              },
+              "record": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/common.v1/$defs/record"
+                  }
+                ]
+              },
+              "window": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "outcome",
+              "record",
+              "present",
+              "error_code"
+            ],
+            "type": "object"
+          }
+        },
+        "$ref": "#/components/schemas/verify.v1/$defs/request",
+        "description": "A fresh read of one record after an act. Whether the goal holds is judged by the client.",
+        "title": "POST /v1/verify"
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "description": "Required when the runtime was started with --token",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "license": {
+      "identifier": "MIT",
+      "name": "MIT"
+    },
+    "summary": "macOS desktop sidecar: deterministic accessibility-tree reads and a guarded, journalled model loop over one allow-listed app",
+    "title": "WakeCore Desktop Runtime",
+    "version": "0.3.0",
+    "x-wakecore-protocol": "wakecore.desktop-runtime/1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/v1/act": {
+      "post": {
+        "operationId": "post_act",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/act.v1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/act.v1/$defs/response"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "WakeCore-Protocol": {
+                "$ref": "#/components/headers/Protocol"
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (see error.code)"
+          }
+        },
+        "summary": "Run the guarded model loop, at most once per key"
+      }
+    },
+    "/v1/act/status": {
+      "get": {
+        "operationId": "get_act_status",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/act.v1/$defs/status_response"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "WakeCore-Protocol": {
+                "$ref": "#/components/headers/Protocol"
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (see error.code)"
+          }
+        },
+        "summary": "Journal status of an act"
+      }
+    },
+    "/v1/acts/{key}": {
+      "get": {
+        "operationId": "get_acts_key",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/act_record.v1"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "WakeCore-Protocol": {
+                "$ref": "#/components/headers/Protocol"
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (see error.code)"
+          }
+        },
+        "summary": "Full journal record of an act"
+      }
+    },
+    "/v1/acts/{key}/cancel": {
+      "post": {
+        "operationId": "post_acts_key_cancel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/act.v1/$defs/cancel_response"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "WakeCore-Protocol": {
+                "$ref": "#/components/headers/Protocol"
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (see error.code)"
+          }
+        },
+        "summary": "Cooperatively cancel a running act"
+      }
+    },
+    "/v1/capabilities": {
+      "get": {
+        "operationId": "get_capabilities",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/capabilities.v1"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "WakeCore-Protocol": {
+                "$ref": "#/components/headers/Protocol"
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (see error.code)"
+          }
+        },
+        "summary": "What this runtime supports"
+      }
+    },
+    "/v1/extractors/validate": {
+      "post": {
+        "operationId": "post_extractors_validate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/extractor.v1/$defs/validate_request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/extractor.v1/$defs/validate_response"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "WakeCore-Protocol": {
+                "$ref": "#/components/headers/Protocol"
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (see error.code)"
+          }
+        },
+        "summary": "Check a desktop extractor without touching an app"
+      }
+    },
+    "/v1/health": {
+      "get": {
+        "operationId": "get_health",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/health.v1"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "WakeCore-Protocol": {
+                "$ref": "#/components/headers/Protocol"
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (see error.code)"
+          }
+        },
+        "summary": "Liveness, protocol version and the bridge's status"
+      }
+    },
+    "/v1/observe": {
+      "post": {
+        "operationId": "post_observe",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/observe.v1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/observe.v1/$defs/response"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "WakeCore-Protocol": {
+                "$ref": "#/components/headers/Protocol"
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (see error.code)"
+          }
+        },
+        "summary": "Deterministic read of an app (the eye)"
+      }
+    },
+    "/v1/verify": {
+      "post": {
+        "operationId": "post_verify",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/verify.v1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/verify.v1/$defs/response"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "WakeCore-Protocol": {
+                "$ref": "#/components/headers/Protocol"
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (see error.code)"
+          }
+        },
+        "summary": "Deterministic read of one record"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearer": []
+    }
+  ],
+  "servers": [
+    {
+      "description": "loopback only",
+      "url": "http://127.0.0.1:{port}",
+      "variables": {
+        "port": {
+          "default": "8766"
+        }
+      }
+    }
+  ]
+}

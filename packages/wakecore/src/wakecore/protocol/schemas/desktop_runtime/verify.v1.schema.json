@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wakecore:schema:desktop-runtime:verify:v1",
+  "title": "POST /v1/verify",
+  "description": "A fresh read of one record after an act. Whether the goal holds is judged by the client.",
+  "$ref": "#/$defs/request",
+  "$defs": {
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "app",
+        "apps",
+        "extractor",
+        "record_id"
+      ],
+      "properties": {
+        "app": {
+          "$ref": "common.v1.schema.json#/$defs/bundle_id"
+        },
+        "apps": {
+          "$ref": "common.v1.schema.json#/$defs/apps"
+        },
+        "extractor": {
+          "type": "object",
+          "description": "extractor.v1.schema.json; an invalid one is outcome SCHEMA_INVALID"
+        },
+        "record_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      }
+    },
+    "response": {
+      "type": "object",
+      "required": [
+        "outcome",
+        "record",
+        "present",
+        "error_code"
+      ],
+      "properties": {
+        "outcome": {
+          "$ref": "common.v1.schema.json#/$defs/outcome"
+        },
+        "record": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "common.v1.schema.json#/$defs/record"
+            }
+          ]
+        },
+        "present": {
+          "type": "boolean"
+        },
+        "content_digest": {
+          "type": "string"
+        },
+        "error_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "app": {
+          "type": "string"
+        },
+        "window": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}

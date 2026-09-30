@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "task_id": "todo_watch",
+  "root_task_id": "todo_watch",
+  "spec_version": 1,
+  "purpose": "Tell me when a todo called 'Pay rent' appears; finish once it is ticked",
+  "source": {
+    "binding_ref": "todomvc_demo",
+    "resource_scope": {
+      "origins": [
+        "https://demo.playwright.dev"
+      ],
+      "url": "https://demo.playwright.dev/todomvc/#/",
+      "extractor": {
+        "list": {
+          "item": "li[data-testid=todo-item]"
+        },
+        "ready": "input.new-todo",
+        "key_field": "title",
+        "columns": [
+          {
+            "field": "title",
+            "selector": "label[data-testid=todo-title]"
+          },
+          {
+            "field": "done",
+            "selector": "input.toggle:checked",
+            "type": "exists"
+          }
+        ]
+      },
+      "record_ids": [
+        "Pay rent"
+      ],
+      "missing_targets": "absent",
+      "state_location": "client"
+    }
+  },
+  "trigger": {
+    "kind": "interval",
+    "every_seconds": 60,
+    "timezone": "UTC",
+    "catchup_policy": "coalesce_latest"
+  },
+  "observation": {
+    "completeness_required": "full_target_scope",
+    "first_snapshot": "baseline_only",
+    "ignore_fields": [],
+    "target_key": "record_ids"
+  },
+  "completion": {
+    "evaluator": "all_targets_match",
+    "evaluator_version": 1,
+    "required_outputs": []
+  },
+  "authority": {
+    "grant_ref": "grant_todomvc",
+    "read_capabilities": [
+      "web.observe"
+    ],
+    "write_capabilities": [],
+    "notify_capabilities": [
+      "inbox.notify_self"
+    ],
+    "model_data_egress": []
+  },
+  "decision": {
+    "profile": "generic_watch.v1",
+    "params": {
+      "conditions": [
+        {
+          "field": "done",
+          "op": "eq",
+          "value": false,
+          "kind": "todo_added"
+        }
+      ],
+      "watch_fields": [
+        "done"
+      ],
+      "on_met": "notify",
+      "title": "New todo",
+      "complete_when": [
+        {
+          "field": "done",
+          "op": "eq",
+          "value": true
+        }
+      ]
+    }
+  },
+  "limits": {
+    "max_steps_per_run": 8,
+    "max_run_seconds": 120,
+    "max_model_attempts_per_day": 4,
+    "min_probe_interval_seconds": 60,
+    "max_followup_count": 2,
+    "max_followup_depth": 1
+  },
+  "followup": {
+    "enabled": false
+  },
+  "expires_at": "2027-01-01T00:00:00+00:00"
+}

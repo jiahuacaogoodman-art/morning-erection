@@ -1,0 +1,46 @@
+name: New adapter (connector or tool)
+description: Propose or announce a connector, a tool or a UI Runtime implementation
+labels: ["adapter", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Most adapters belong in their own package, loaded as a plugin (see examples/custom_connector).
+        **Never include real credentials or tokens for the target service.** 请勿附带目标服务的真实凭据。
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options:
+        - connector (ObservationPort)
+        - tool (ActionPort)
+        - UI Runtime implementation (protocol wakecore.ui-runtime/1)
+    validations:
+      required: true
+  - type: input
+    id: target
+    attributes:
+      label: Target system
+      placeholder: e.g. GitHub issues, Google Calendar, an internal portal
+    validations:
+      required: true
+  - type: textarea
+    id: effects
+    attributes:
+      label: Side effects and verification
+      description: side_effect_class, how the effect is made idempotent (effect_key), and how the result is verified / reconciled without re-sending
+    validations:
+      required: true
+  - type: textarea
+    id: auth
+    attributes:
+      label: Authentication and data egress
+      description: How credentials are resolved (secret_ref), which origins / data egress it needs
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: It passes `wakecore.testing.conformance` (or I will make it pass before asking for review).
+        - label: No credentials or personal data are included here.
+          required: true

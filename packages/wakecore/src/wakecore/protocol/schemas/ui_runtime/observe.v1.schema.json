@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wakecore:schema:ui-runtime:observe:v1",
+  "title": "POST /v1/observe",
+  "description": "Deterministic read (the eye): no model, read-only network (any non-GET/HEAD/OPTIONS request is aborted). A failed read is an outcome in a 200 response, not an HTTP error.",
+  "$ref": "#/$defs/request",
+  "$defs": {
+    "request": {
+      "type": "object", "additionalProperties": false, "required": ["session_ref", "url", "origins", "extractor"],
+      "properties": {
+        "session_ref": {"$ref": "common.v1.schema.json#/$defs/session_ref"},
+        "url": {"$ref": "common.v1.schema.json#/$defs/url"},
+        "origins": {"$ref": "common.v1.schema.json#/$defs/origins"},
+        "extractor": {"type": "object", "description": "extractor.v1.schema.json; an invalid one is outcome SCHEMA_INVALID"},
+        "timeouts": {"$ref": "common.v1.schema.json#/$defs/timeouts"}
+      }
+    },
+    "response": {
+      "type": "object", "required": ["outcome", "records", "error_code"],
+      "properties": {
+        "outcome": {"$ref": "common.v1.schema.json#/$defs/outcome"},
+        "records": {"type": "object", "additionalProperties": {"$ref": "common.v1.schema.json#/$defs/record"}},
+        "content_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "error_code": {"type": ["string", "null"]},
+        "url": {"type": "string"},
+        "title": {"type": "string"},
+        "detail": {"type": "string"}
+      }
+    }
+  }
+}

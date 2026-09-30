@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "morning-erection"
+dynamic = ["version"]
+description = "WakeCore kernel: a durable, permissioned runtime for long-running autonomous tasks (watch -> decide -> approve -> act -> verify)"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+authors = [{ name = "WakeCore contributors" }]
+keywords = ["agents", "durable-execution", "idempotency", "approval", "computer-use", "playwright", "workflow"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Typing :: Typed",
+]
+dependencies = []
+
+[project.optional-dependencies]
+postgres = ["psycopg[binary]>=3.1"]
+ui = ["morning-erection-ui-runtime==0.3.0"]
+
+[project.scripts]
+wakecore = "wakecore.app.cli.main:main"
+
+[project.urls]
+Homepage = "https://github.com/jiahuacaogoodman-art/morning-erection"
+Documentation = "https://github.com/jiahuacaogoodman-art/morning-erection/tree/main/docs"
+Issues = "https://github.com/jiahuacaogoodman-art/morning-erection/issues"
+Changelog = "https://github.com/jiahuacaogoodman-art/morning-erection/blob/main/CHANGELOG.md"
+
+[tool.hatch.version]
+path = "src/wakecore/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wakecore"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/wakecore", "README.md", "LICENSE"]

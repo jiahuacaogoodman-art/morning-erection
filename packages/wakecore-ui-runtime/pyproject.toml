@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "morning-erection-ui-runtime"
+dynamic = ["version"]
+description = "WakeCore UI Runtime: the browser sidecar (Playwright eyes, OpenAI Computer Use hands) behind WakeCore's UI Runtime protocol v1"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+authors = [{ name = "WakeCore contributors" }]
+keywords = ["playwright", "computer-use", "browser-automation", "agents", "sidecar"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP :: Browsers",
+    "Typing :: Typed",
+]
+dependencies = [
+    "playwright>=1.45",
+    "morning-erection==0.3.0",
+]
+
+[project.scripts]
+wakecore-ui-runtime = "wakecore_ui_runtime.server:main"
+wakecore-ui-login = "wakecore_ui_runtime.login:main"
+wakecore-desktop-runtime = "wakecore_ui_runtime.desktop.server:main"
+
+[project.urls]
+Homepage = "https://github.com/jiahuacaogoodman-art/morning-erection"
+Issues = "https://github.com/jiahuacaogoodman-art/morning-erection/issues"
+
+[tool.hatch.version]
+path = "src/wakecore_ui_runtime/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wakecore_ui_runtime"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/wakecore_ui_runtime", "README.md", "LICENSE"]

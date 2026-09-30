@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wakecore:schema:event-envelope:v1",
+  "title": "WakeCore ingress event (CloudEvents 1.0 structured JSON, RFC §6)",
+  "description": "Body of POST /v1/ingress/{source_ref}, authenticated by X-WakeCore-Signature (HMAC-SHA256 of the raw body with the binding's ingress secret). source must equal the binding's source_uri; types starting with 'wakecore.' are reserved. Unsupported data.schema_version is quarantined, not rejected. Mirrors wakecore/kernel/events/admission.py.",
+  "type": "object",
+  "required": ["specversion", "id", "source", "type"],
+  "properties": {
+    "specversion": {"const": "1.0"},
+    "id": {"type": "string", "minLength": 1, "description": "Deduplicated per (tenant, source_ref)."},
+    "source": {"type": "string", "minLength": 1},
+    "type": {"type": "string", "minLength": 1, "not": {"pattern": "^wakecore\\."}},
+    "subject": {"type": "string"},
+    "time": {"type": "string", "format": "date-time"},
+    "datacontenttype": {"type": "string"},
+    "data": {
+      "type": "object",
+      "properties": {"schema_version": {"type": "integer"}}
+    }
+  }
+}

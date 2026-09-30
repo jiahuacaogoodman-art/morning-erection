@@ -1,0 +1,226 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wakecore:schema:desktop-runtime:extractor:v1",
+  "title": "Desktop extractor v1 (accessibility tree -> records, deterministic, no model)",
+  "description": "Exactly one of `records` / `list`. Elements are found by what they are (id, description, head, ...), never by index; a selector matching several elements without `nth` is an error. The runtime's validator is authoritative. See docs/extractor.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ready"
+  ],
+  "properties": {
+    "ready": {
+      "$ref": "#/$defs/selector"
+    },
+    "login": {
+      "$ref": "#/$defs/selector"
+    },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title_contains": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "records": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "columns"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "columns": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 32,
+            "items": {
+              "$ref": "#/$defs/column"
+            }
+          }
+        }
+      }
+    },
+    "list": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item"
+      ],
+      "properties": {
+        "item": {
+          "$ref": "#/$defs/selector"
+        }
+      }
+    },
+    "key_field": {
+      "type": "string"
+    },
+    "columns": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "$ref": "#/$defs/column"
+      }
+    }
+  },
+  "$defs": {
+    "selector": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "help": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "head": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "head_regex": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "under": {
+          "$ref": "#/$defs/selector"
+        },
+        "nth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        }
+      }
+    },
+    "column": {
+      "type": "object",
+      "required": [
+        "field"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "type": "string",
+          "minLength": 1
+        },
+        "node": {
+          "$ref": "#/$defs/selector"
+        },
+        "attr": {
+          "enum": [
+            "head",
+            "value",
+            "description",
+            "help",
+            "id"
+          ]
+        },
+        "type": {
+          "enum": [
+            "text",
+            "int",
+            "number",
+            "bool",
+            "exists"
+          ]
+        },
+        "transform": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "group": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "default": {
+          "$ref": "common.v1.schema.json#/$defs/scalar"
+        },
+        "true": {
+          "type": "string"
+        },
+        "false": {
+          "type": "string"
+        }
+      }
+    },
+    "validate_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "extractor"
+      ],
+      "properties": {
+        "extractor": {
+          "type": "object"
+        }
+      }
+    },
+    "validate_response": {
+      "type": "object",
+      "required": [
+        "ok"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "mode": {
+          "enum": [
+            "records",
+            "list"
+          ]
+        },
+        "normalized": {
+          "type": "object"
+        },
+        "error": {
+          "type": "object",
+          "required": [
+            "code",
+            "message"
+          ],
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

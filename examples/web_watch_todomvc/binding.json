@@ -1,0 +1,14 @@
+{
+  "source_ref": "todomvc_demo",
+  "connector_id": "web.playwright",
+  "source_uri": "https://demo.playwright.dev/todomvc/#/",
+  "resource_scope": {
+    "origins": [
+      "https://demo.playwright.dev"
+    ]
+  },
+  "capabilities": [
+    "web.observe"
+  ],
+  "secret_ref": "sec_todo_session"
+}

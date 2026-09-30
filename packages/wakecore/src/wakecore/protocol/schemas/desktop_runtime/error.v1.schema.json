@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wakecore:schema:desktop-runtime:error:v1",
+  "title": "Desktop Runtime protocol v1: error envelope",
+  "description": "Every non-2xx response. Same envelope as the UI Runtime protocol.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "error"
+  ],
+  "properties": {
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "retryable"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "unauthorised",
+            "not_found",
+            "method_not_allowed",
+            "bad_body",
+            "payload_too_large",
+            "invalid_request",
+            "idempotency_key_reused",
+            "model_egress_mismatch",
+            "app_outside_scope",
+            "desktop_busy",
+            "act_not_found",
+            "runtime_timeout",
+            "internal"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "details": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,61 @@
+name: Bug report
+description: Something does not behave as documented
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not paste credentials, cookies, API keys, session/profile files, `.secrets/*`, or screenshots of logged-in pages.**
+        Redact tokens and personal data from logs. Security problems: use private reporting instead (see SECURITY.md).
+        请勿粘贴密码、Cookie、API key、会话/浏览器配置文件或已登录页面截图；安全问题请走私密报告。
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - kernel (scheduling, actions, approvals, recovery, replay)
+        - storage (SQLite / PostgreSQL)
+        - management / ingress API
+        - UI Runtime sidecar (observe / verify / act)
+        - extractor
+        - plugin / conformance suite
+        - CLI
+        - docs
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "`wakecore --version`-equivalent: `python -c 'import wakecore; print(wakecore.__version__)'`, and the sidecar's `GET /v1/health`"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: A task spec, extractor or failing test, with secrets removed. A test against the harness in `tests/` is ideal.
+      render: python
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output (redacted)
+      render: text
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: OS, Python, store (SQLite/PostgreSQL + version), Playwright/Chromium version if relevant
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I removed credentials, cookies, keys and personal data from everything above.
+          required: true

@@ -1,0 +1,250 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wakecore:schema:task-spec:v1",
+  "title": "WakeCore TaskSpec v1 (RFC §4.1)",
+  "description": "Mirrors wakecore/kernel/domain/taskspec.py:parse_task_spec. The parser is authoritative; unknown fields are rejected at every level. tenant_id is taken from the authenticated principal and may be omitted.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_id",
+    "source",
+    "trigger",
+    "completion",
+    "authority",
+    "expires_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "tenant_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "root_task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "parent_task_id": {
+      "type": "string"
+    },
+    "spec_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "depth": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "purpose": {
+      "type": "string"
+    },
+    "accounting_timezone": {
+      "type": "string"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Must carry a timezone offset."
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "binding_ref"
+      ],
+      "properties": {
+        "binding_ref": {
+          "type": "string"
+        },
+        "resource_scope": {
+          "type": "object"
+        }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "description": "interval requires every_seconds >= limits.min_probe_interval_seconds; once requires due_at.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "interval",
+            "once"
+          ]
+        },
+        "every_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "due_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "timezone": {
+          "type": "string"
+        },
+        "catchup_policy": {
+          "enum": [
+            "coalesce_latest",
+            "skip_missed"
+          ]
+        }
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "completeness_required": {
+          "enum": [
+            "full_target_scope",
+            "declared_scope"
+          ]
+        },
+        "first_snapshot": {
+          "enum": [
+            "notify_existing_results",
+            "baseline_only"
+          ]
+        },
+        "ignore_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "target_key": {
+          "type": "string"
+        }
+      }
+    },
+    "completion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evaluator"
+      ],
+      "properties": {
+        "evaluator": {
+          "type": "string"
+        },
+        "evaluator_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "required_outputs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "grant_ref"
+      ],
+      "description": "A request only: effective authority is the intersection with the grant and system policy (RFC §7).",
+      "properties": {
+        "grant_ref": {
+          "type": "string"
+        },
+        "read_capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "write_capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notify_capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "model_data_egress": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_steps_per_run": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_run_seconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_model_attempts_per_day": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "min_probe_interval_seconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_followup_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_followup_depth": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "followup": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "decision": {
+      "description": "V0.3: decision profile that interprets observations. Absent means grades.v1. Profile parameters are validated by the kernel profile registry (wakecore/kernel/decision/profiles.py).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile"
+      ],
+      "properties": {
+        "profile": {
+          "type": "string",
+          "enum": [
+            "grades.v1",
+            "generic_watch.v1"
+          ]
+        },
+        "params": {
+          "type": "object",
+          "description": "generic_watch.v1: conditions[{field,op,value,kind}], watch_fields[], on_met notify|plan, label_field, complete_when[], title"
+        }
+      }
+    }
+  }
+}

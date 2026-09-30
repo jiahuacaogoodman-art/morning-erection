@@ -1,0 +1,1604 @@
+{
+  "components": {
+    "schemas": {
+      "api_error.v1": {
+        "additionalProperties": false,
+        "description": "Every non-2xx response. Never echoes tokens or request bodies. trace_id is also sent as X-Trace-Id.",
+        "properties": {
+          "error": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "enum": [
+                  "KERNEL_ERROR",
+                  "NOT_FOUND",
+                  "TASK_NOT_ACTIVE",
+                  "TASK_EXPIRED",
+                  "SOURCE_AUTH_REQUIRED",
+                  "SOURCE_COVERAGE_INSUFFICIENT",
+                  "SCHEMA_MISMATCH",
+                  "POLICY_DENIED",
+                  "APPROVAL_REQUIRED",
+                  "APPROVAL_STALE",
+                  "BUDGET_DEFERRED",
+                  "STALE_LEASE",
+                  "SIDE_EFFECT_UNKNOWN",
+                  "VERSION_CONFLICT",
+                  "INVALID_TRANSITION",
+                  "IDEMPOTENCY_CONFLICT",
+                  "IDENTITY_CONFLICT",
+                  "UNAUTHENTICATED",
+                  "METHOD_NOT_ALLOWED",
+                  "PAYLOAD_TOO_LARGE",
+                  "INTERNAL"
+                ]
+              },
+              "details": {
+                "type": "object"
+              },
+              "message": {
+                "type": "string"
+              },
+              "retryable": {
+                "type": "boolean"
+              },
+              "trace_id": {
+                "pattern": "^[A-Za-z0-9_.-]{1,64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "details",
+              "trace_id"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "WakeCore API error (RFC §15)",
+        "type": "object"
+      },
+      "event_envelope.v1": {
+        "description": "Body of POST /v1/ingress/{source_ref}, authenticated by X-WakeCore-Signature (HMAC-SHA256 of the raw body with the binding's ingress secret). source must equal the binding's source_uri; types starting with 'wakecore.' are reserved. Unsupported data.schema_version is quarantined, not rejected. Mirrors wakecore/kernel/events/admission.py.",
+        "properties": {
+          "data": {
+            "properties": {
+              "schema_version": {
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "datacontenttype": {
+            "type": "string"
+          },
+          "id": {
+            "description": "Deduplicated per (tenant, source_ref).",
+            "minLength": 1,
+            "type": "string"
+          },
+          "source": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "specversion": {
+            "const": "1.0"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "time": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "minLength": 1,
+            "not": {
+              "pattern": "^wakecore\\."
+            },
+            "type": "string"
+          }
+        },
+        "required": [
+          "specversion",
+          "id",
+          "source",
+          "type"
+        ],
+        "title": "WakeCore ingress event (CloudEvents 1.0 structured JSON, RFC §6)",
+        "type": "object"
+      },
+      "task_spec.v1": {
+        "additionalProperties": false,
+        "description": "Mirrors wakecore/kernel/domain/taskspec.py:parse_task_spec. The parser is authoritative; unknown fields are rejected at every level. tenant_id is taken from the authenticated principal and may be omitted.",
+        "properties": {
+          "accounting_timezone": {
+            "type": "string"
+          },
+          "authority": {
+            "additionalProperties": false,
+            "description": "A request only: effective authority is the intersection with the grant and system policy (RFC §7).",
+            "properties": {
+              "grant_ref": {
+                "type": "string"
+              },
+              "model_data_egress": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "notify_capabilities": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "read_capabilities": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "write_capabilities": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "grant_ref"
+            ],
+            "type": "object"
+          },
+          "completion": {
+            "additionalProperties": false,
+            "properties": {
+              "evaluator": {
+                "type": "string"
+              },
+              "evaluator_version": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "required_outputs": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "evaluator"
+            ],
+            "type": "object"
+          },
+          "decision": {
+            "additionalProperties": false,
+            "description": "V0.3: decision profile that interprets observations. Absent means grades.v1. Profile parameters are validated by the kernel profile registry (wakecore/kernel/decision/profiles.py).",
+            "properties": {
+              "params": {
+                "description": "generic_watch.v1: conditions[{field,op,value,kind}], watch_fields[], on_met notify|plan, label_field, complete_when[], title",
+                "type": "object"
+              },
+              "profile": {
+                "enum": [
+                  "grades.v1",
+                  "generic_watch.v1"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "profile"
+            ],
+            "type": "object"
+          },
+          "depth": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "expires_at": {
+            "description": "Must carry a timezone offset.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "followup": {
+            "additionalProperties": false,
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "limits": {
+            "additionalProperties": false,
+            "properties": {
+              "max_followup_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "max_followup_depth": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "max_model_attempts_per_day": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "max_run_seconds": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "max_steps_per_run": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "min_probe_interval_seconds": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "observation": {
+            "additionalProperties": false,
+            "properties": {
+              "completeness_required": {
+                "enum": [
+                  "full_target_scope",
+                  "declared_scope"
+                ]
+              },
+              "first_snapshot": {
+                "enum": [
+                  "notify_existing_results",
+                  "baseline_only"
+                ]
+              },
+              "ignore_fields": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "target_key": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "parent_task_id": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "root_task_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1
+          },
+          "source": {
+            "additionalProperties": false,
+            "properties": {
+              "binding_ref": {
+                "type": "string"
+              },
+              "resource_scope": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "binding_ref"
+            ],
+            "type": "object"
+          },
+          "spec_version": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "task_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "tenant_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "trigger": {
+            "additionalProperties": false,
+            "description": "interval requires every_seconds >= limits.min_probe_interval_seconds; once requires due_at.",
+            "properties": {
+              "catchup_policy": {
+                "enum": [
+                  "coalesce_latest",
+                  "skip_missed"
+                ]
+              },
+              "due_at": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "every_seconds": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "kind": {
+                "enum": [
+                  "interval",
+                  "once"
+                ]
+              },
+              "timezone": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "schema_version",
+          "task_id",
+          "source",
+          "trigger",
+          "completion",
+          "authority",
+          "expires_at"
+        ],
+        "title": "WakeCore TaskSpec v1 (RFC §4.1)",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "license": {
+      "identifier": "MIT",
+      "name": "MIT"
+    },
+    "summary": "Tasks, approvals, grants, bindings and signed ingress; workers do the work",
+    "title": "WakeCore management and ingress API",
+    "version": "0.3.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/healthz": {
+      "get": {
+        "operationId": "get_healthz",
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [],
+        "summary": "Liveness"
+      }
+    },
+    "/v1/actions/{id}/resolve": {
+      "post": {
+        "operationId": "post_actions_id_resolve",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Same key + same request replays the first response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Resolve an UNKNOWN action by hand"
+      }
+    },
+    "/v1/actions/{id}/revise": {
+      "post": {
+        "operationId": "post_actions_id_revise",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Same key + same request replays the first response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replace an action's payload (needs a new approval)"
+      }
+    },
+    "/v1/approvals/{id}/approve": {
+      "post": {
+        "operationId": "post_approvals_id_approve",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Same key + same request replays the first response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Approve an action (binds payload_digest)"
+      }
+    },
+    "/v1/approvals/{id}/reject": {
+      "post": {
+        "operationId": "post_approvals_id_reject",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Same key + same request replays the first response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Reject an action"
+      }
+    },
+    "/v1/bindings": {
+      "post": {
+        "operationId": "post_bindings",
+        "parameters": [
+          {
+            "description": "Same key + same request replays the first response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Register a source binding"
+      }
+    },
+    "/v1/bindings/{id}/reauthorised": {
+      "post": {
+        "operationId": "post_bindings_id_reauthorised",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Same key + same request replays the first response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark a source as re-authorised after a login"
+      }
+    },
+    "/v1/connectors": {
+      "get": {
+        "operationId": "get_connectors",
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Installed connectors"
+      }
+    },
+    "/v1/evidence/{id}": {
+      "get": {
+        "operationId": "get_evidence_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One evidence record"
+      }
+    },
+    "/v1/grants": {
+      "post": {
+        "operationId": "post_grants",
+        "parameters": [
+          {
+            "description": "Same key + same request replays the first response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Register a grant (capabilities, data egress, resource scope)"
+      }
+    },
+    "/v1/grants/{id}/revoke": {
+      "post": {
+        "operationId": "post_grants_id_revoke",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Same key + same request replays the first response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Revoke a grant"
+      }
+    },
+    "/v1/ingress/{id}": {
+      "post": {
+        "operationId": "post_ingress_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "HMAC-SHA256 of the body",
+            "in": "header",
+            "name": "X-WakeCore-Signature",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/event_envelope.v1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [],
+        "summary": "Push an event (HMAC-signed, cannot control tasks)"
+      }
+    },
+    "/v1/runs/{id}": {
+      "get": {
+        "operationId": "get_runs_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One run"
+      }
+    },
+    "/v1/tasks": {
+      "get": {
+        "operationId": "get_tasks",
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List the caller's tasks"
+      },
+      "post": {
+        "operationId": "post_tasks",
+        "parameters": [
+          {
+            "description": "Same key + same request replays the first response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/task_spec.v1"
+                  },
+                  {
+                    "properties": {
+                      "spec": {
+                        "$ref": "#/components/schemas/task_spec.v1"
+                      }
+                    },
+                    "required": [
+                      "spec"
+                    ],
+                    "type": "object"
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a draft task (TaskSpec)"
+      }
+    },
+    "/v1/tasks/{id}": {
+      "get": {
+        "operationId": "get_tasks_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Task state and explanation (ETag = version)"
+      }
+    },
+    "/v1/tasks/{id}/activate": {
+      "post": {
+        "operationId": "post_tasks_id_activate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Same key + same request replays the first response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Expected task version (or body expected_version)",
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Activate a confirmed spec version (digest-bound)"
+      }
+    },
+    "/v1/tasks/{id}/cancel": {
+      "post": {
+        "operationId": "post_tasks_id_cancel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Same key + same request replays the first response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Expected task version (or body expected_version)",
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel a task"
+      }
+    },
+    "/v1/tasks/{id}/pause": {
+      "post": {
+        "operationId": "post_tasks_id_pause",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Same key + same request replays the first response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Expected task version (or body expected_version)",
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Pause a task"
+      }
+    },
+    "/v1/tasks/{id}/resume": {
+      "post": {
+        "operationId": "post_tasks_id_resume",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Same key + same request replays the first response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Expected task version (or body expected_version)",
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Resume a task"
+      }
+    },
+    "/v1/tasks/{id}/timeline": {
+      "get": {
+        "operationId": "get_tasks_id_timeline",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Audit timeline of a task"
+      }
+    },
+    "/v1/tools": {
+      "get": {
+        "operationId": "get_tools",
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Installed tools, with their MCP form (installed is not granted)"
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8080"
+    }
+  ]
+}

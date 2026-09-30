@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "task_id": "grades_demo",
+  "root_task_id": "grades_demo",
+  "spec_version": 1,
+  "purpose": "关注指定课程成绩，出分后通知本人，全部发布后结束",
+  "source": {
+    "binding_ref": "school_account_demo",
+    "resource_scope": {
+      "semester": "fall_demo",
+      "course_ids": [
+        "PHARM",
+        "PATHOPHYS"
+      ]
+    }
+  },
+  "trigger": {
+    "kind": "interval",
+    "every_seconds": 300,
+    "timezone": "Asia/Shanghai",
+    "catchup_policy": "coalesce_latest"
+  },
+  "observation": {
+    "completeness_required": "full_target_scope",
+    "first_snapshot": "notify_existing_results",
+    "ignore_fields": [
+      "page_rendered_at"
+    ]
+  },
+  "completion": {
+    "evaluator": "all_expected_courses_published",
+    "evaluator_version": 1,
+    "required_outputs": [
+      "internal_inbox_committed"
+    ]
+  },
+  "authority": {
+    "grant_ref": "grant_confirmed_by_user",
+    "read_capabilities": [
+      "grades.read"
+    ],
+    "write_capabilities": [],
+    "notify_capabilities": [
+      "inbox.notify_self"
+    ],
+    "model_data_egress": []
+  },
+  "limits": {
+    "max_steps_per_run": 8,
+    "max_run_seconds": 120,
+    "max_model_attempts_per_day": 4,
+    "min_probe_interval_seconds": 300,
+    "max_followup_count": 2,
+    "max_followup_depth": 1
+  },
+  "followup": {
+    "enabled": false
+  },
+  "expires_at": "2026-10-06T00:00:00+08:00"
+}

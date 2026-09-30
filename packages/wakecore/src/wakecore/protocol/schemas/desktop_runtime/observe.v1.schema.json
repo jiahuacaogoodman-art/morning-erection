@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wakecore:schema:desktop-runtime:observe:v1",
+  "title": "POST /v1/observe",
+  "description": "Deterministic read of one app's accessibility tree (the eye): no model, no action. A failed read is an outcome in a 200 response. `app` outside `apps` is 403 app_outside_scope.",
+  "$ref": "#/$defs/request",
+  "$defs": {
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "app",
+        "apps",
+        "extractor"
+      ],
+      "properties": {
+        "app": {
+          "$ref": "common.v1.schema.json#/$defs/bundle_id"
+        },
+        "apps": {
+          "$ref": "common.v1.schema.json#/$defs/apps"
+        },
+        "extractor": {
+          "type": "object",
+          "description": "extractor.v1.schema.json; an invalid one is outcome SCHEMA_INVALID"
+        }
+      }
+    },
+    "response": {
+      "type": "object",
+      "required": [
+        "outcome",
+        "records",
+        "error_code"
+      ],
+      "properties": {
+        "outcome": {
+          "$ref": "common.v1.schema.json#/$defs/outcome"
+        },
+        "records": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "common.v1.schema.json#/$defs/record"
+          }
+        },
+        "content_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "error_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "app": {
+          "type": "string"
+        },
+        "window": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "detail": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

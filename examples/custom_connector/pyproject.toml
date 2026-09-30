@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "wakecore-example-plugin"
+version = "0.1.0"
+description = "Example WakeCore plugin: a JSON-file connector and an append-only journal tool"
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = ["morning-erection>=0.3"]
+
+# The kernel only loads entry points the operator allowlists:
+#   WAKECORE_PLUGINS=example_json_file,example_journal wakecore worker
+[project.entry-points."wakecore.connectors"]
+example_json_file = "wakecore_example_plugin:make_connector"
+
+[project.entry-points."wakecore.tools"]
+example_journal = "wakecore_example_plugin:make_tool"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wakecore_example_plugin"]

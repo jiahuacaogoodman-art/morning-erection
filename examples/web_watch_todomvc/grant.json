@@ -1,0 +1,14 @@
+{
+  "grant_ref": "grant_todomvc",
+  "capabilities": [
+    "web.observe",
+    "inbox.notify_self"
+  ],
+  "data_egress": [],
+  "resource_scope": {
+    "origins": [
+      "https://demo.playwright.dev"
+    ]
+  },
+  "expires_at": "2027-01-01T00:00:00+00:00"
+}

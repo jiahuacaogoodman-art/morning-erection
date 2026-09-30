@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wakecore:schema:desktop-runtime:health:v1",
+  "title": "GET /v1/health",
+  "description": "Liveness + protocol negotiation + the bridge's status. Clients MUST refuse a runtime whose `protocol` major version they do not speak.",
+  "type": "object",
+  "required": [
+    "ok",
+    "protocol",
+    "runtime_version",
+    "model_configured",
+    "bridge"
+  ],
+  "properties": {
+    "ok": {
+      "const": true
+    },
+    "protocol": {
+      "$ref": "common.v1.schema.json#/$defs/protocol"
+    },
+    "runtime_version": {
+      "type": "string"
+    },
+    "model_configured": {
+      "type": "boolean"
+    },
+    "model_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "model_endpoint": {
+      "type": "string",
+      "description": "host the accessibility trees and screenshots are sent to"
+    },
+    "model_egress": {
+      "type": "string",
+      "pattern": "^model:"
+    },
+    "bridge": {
+      "$ref": "common.v1.schema.json#/$defs/bridge_status"
+    },
+    "interrupted_on_start": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

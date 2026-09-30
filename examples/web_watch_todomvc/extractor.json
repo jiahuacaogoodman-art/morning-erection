@@ -1,0 +1,18 @@
+{
+  "list": {
+    "item": "li[data-testid=todo-item]"
+  },
+  "ready": "input.new-todo",
+  "key_field": "title",
+  "columns": [
+    {
+      "field": "title",
+      "selector": "label[data-testid=todo-title]"
+    },
+    {
+      "field": "done",
+      "selector": "input.toggle:checked",
+      "type": "exists"
+    }
+  ]
+}
