@@ -29,8 +29,8 @@ jobs:
         os: [ubuntu-latest, macos-latest]
         python: ["3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
       - name: Install the kernel alone
@@ -59,8 +59,8 @@ jobs:
     name: lint, tests, generated specs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - run: uv sync --all-packages --all-extras --group dev
@@ -86,8 +86,8 @@ jobs:
       # the application role must not be a superuser (RFC §9.4); the gate checks it
       WAKECORE_PG_DSN: postgresql://wk_app:wk_app@localhost:5432/wk_test
     steps:
-      - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - name: Roles and database
@@ -109,15 +109,15 @@ jobs:
     name: browser sidecar (real Chromium, simulated sites and model)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - run: uv sync --all-packages --all-extras --group dev
       - name: Playwright version
         id: pw
         run: echo "version=$(uv run python -c 'from importlib.metadata import version; print(version("playwright"))')" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
@@ -125,7 +125,7 @@ jobs:
       - run: uv run pytest -q tests/ui
       - name: Keep artifacts of failed runs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ui-artifacts
           path: /tmp/pytest-of-*/**/artifacts/
