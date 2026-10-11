@@ -17,6 +17,7 @@ class GatewayService:
         self.store, self.native, self.on_change = store, conversation, on_change
         self.apply_error = None
         self.test_errors = {}
+        self.test_hosts = {}
 
     def runtime(self, desired_revision=None):
         host = self.native.host
@@ -44,6 +45,8 @@ class GatewayService:
         applied = host.update_gateways(select_active=select_active)
         if not applied or applied.get("revision") != self.store.value["revision"]:
             raise NativePiError("Pi 未确认当前配置版本。")
+        if hasattr(self.native, 'sync_gateways'):
+            self.native.sync_gateways()
         self.apply_error = None
         # Optional extensions failing to reconfigure must not undo a valid Pi setup.
         try:
@@ -87,7 +90,7 @@ class GatewayService:
                     self._cancel_remote(item["id"])
 
     def _cancel_remote(self, key):
-        host = self.native.host
+        host = self.test_hosts.get(key) or self.native.host
         if host.process and host.process.poll() is None:
             try:
                 host.control("cancel_gateway_test", {"requestId": key}, timeout=5)
@@ -115,7 +118,9 @@ class GatewayService:
                     raise GatewayError("invalid_test_id", "连接测试标识无效。")
                 receipt, created = self.store.begin_test(profile["id"], key)
                 if created:
-                    threading.Thread(target=self._test, args=(receipt,), daemon=True).start()
+                    host = self.native.host
+                    self.test_hosts[receipt['id']] = host
+                    threading.Thread(target=self._test, args=(receipt, host), daemon=True).start()
             return {**self.public(), "test": receipt}
         with self.native.operations:
             self.native.assert_idle()
@@ -141,10 +146,10 @@ class GatewayService:
                 else "连接配置已应用到 Pi。" if action in ("activate", "apply") else "已安全保存并应用到 Pi。请进行连接测试。")
             return result
 
-    def _test(self, receipt):
+    def _test(self, receipt, host=None):
         key = receipt["id"]
         try:
-            result = self.native.host.control("test_gateway", {"id": receipt["profile_id"], "revision": receipt["revision"], "requestId": key}, timeout=55)
+            result = (host or self.native.host).control("test_gateway", {"id": receipt["profile_id"], "revision": receipt["revision"], "requestId": key}, timeout=55)
         except (NativePiError, CredentialStoreError, OSError):
             result = {"ok": False, "category": "runtime", "message": "Pi 连接测试未完成，请检查运行时状态后重新测试。", "tested_at": self.store._now()}
         try:
@@ -152,3 +157,5 @@ class GatewayService:
             self.test_errors.pop(receipt["profile_id"], None)
         except OSError:
             self.test_errors[receipt["profile_id"]] = "测试结果未能保存，请检查磁盘状态。未标记为连接成功。"
+        finally:
+            self.test_hosts.pop(key, None)

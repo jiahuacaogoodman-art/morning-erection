@@ -227,3 +227,58 @@ def test_http_failures_preserve_content_and_status_mode_keeps_server_backoff(tmp
     finally:
         server.shutdown()
         server.server_close()
+
+
+def test_real_device_startup_accepts_high_numbered_descriptor(tmp_path, monkeypatch):
+    """Exercise the real readiness pipe above select()'s macOS FD_SETSIZE."""
+    import fcntl
+    import os
+    import resource
+
+    from test_gateway_credentials import VaultFixture
+
+    from wakecore.app.pulse import devices
+    from wakecore.app.pulse.platform_store import PlatformStore
+
+    if resource.getrlimit(resource.RLIMIT_NOFILE)[0] <= 1200:
+        pytest.skip('requires room for a descriptor above FD_SETSIZE')
+    original = devices.subprocess.Popen
+    def launch(*args, **kwargs):
+        process = original(*args, **kwargs)
+        high = fcntl.fcntl(process.stdout.fileno(), fcntl.F_DUPFD, 1100)
+        process.stdout.close()
+        process.stdout = os.fdopen(high, 'rb', buffering=0)
+        return process
+    monkeypatch.setattr(devices.subprocess, 'Popen', launch)
+    manager = devices.DeviceManager(PlatformStore(tmp_path), tmp_path, vault=VaultFixture())
+    try:
+        manager._start()
+        assert manager.process.stdout.fileno() >= 1100
+        assert manager.local_endpoint.startswith('http://127.0.0.1:')
+        assert manager.process.poll() is None
+    finally:
+        manager.close()
+    assert manager.local_endpoint is None
+
+
+@pytest.mark.parametrize('summary', [
+    'There has been no change in the accessibility tree for Window: "Fixture".',
+    'The following is a diff from the previous accessibility tree with ~ and + representing changed and added elements.\n+ 5 button Increase',
+])
+def test_partial_bridge_observation_cannot_authorize_or_execute(node, summary):
+    computer, bridge = node
+    authorize(computer)
+    body = action(computer)
+    original = bridge.call
+    def partial(method, args, **kwargs):
+        if method == 'get_app_state':
+            return {'text': f'<app_state>\nApp=/Calculator.app (bundleID {APP}, pid 42)\n{summary}\n</app_state>', 'images': [], 'is_error': False}
+        return original(method, args, **kwargs)
+    bridge.call = partial
+    with pytest.raises(ComputerError) as caught:
+        computer.observe({'app': APP})
+    assert caught.value.code == 'observation_incomplete'
+    with pytest.raises(ComputerError) as caught:
+        computer.act(body)
+    assert caught.value.code == 'observation_incomplete'
+    assert not bridge.writes

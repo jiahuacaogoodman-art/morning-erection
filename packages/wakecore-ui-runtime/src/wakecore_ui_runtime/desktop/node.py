@@ -27,7 +27,7 @@ from wakecore.protocol.computer_actions import SCHEMAS, validate_action
 from ..journal import Journal
 from .loop import BUNDLE_ID, SYSTEM_KEYS, normalise_key
 from .mcp import McpBridge
-from .tree import parse
+from .tree import TreeError, parse
 
 PROTOCOL = "morning.computer-node/1"
 ACTION_FIELDS = {
@@ -153,7 +153,10 @@ class ComputerNode:
         result = self.bridge.call("get_app_state", {"app": app, "disableDiff": True})
         if result["is_error"]:
             raise ComputerError("observation_failed", "没有读到应用窗口，请检查应用与辅助功能权限。")
-        tree = parse(result["text"])
+        try:
+            tree = parse(result["text"])
+        except TreeError:
+            raise ComputerError("observation_incomplete", "电脑桥接未返回完整窗口，无法核验操作目标。请检查执行节点的桥接版本。", 409) from None
         if tree.bundle_id != app:
             raise ComputerError("app_mismatch", "读取到的应用不符合授权范围。", 409)
         image = None

@@ -3,10 +3,12 @@ import hashlib
 import json
 import os
 import secrets
+import selectors
 import signal
 import subprocess
 import sys
 import threading
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -92,6 +94,9 @@ class DeviceManager:
         with self.lock:
             if self.process and self.process.poll() is None:
                 return
+            if self.process:
+                self._stop(self.process)
+                self.process = None
             item = self.secure().read("local")
             if not item:
                 item = {"token": secrets.token_urlsafe(32)}
@@ -103,17 +108,30 @@ class DeviceManager:
                     env.pop(key, None)
             env["MORNING_DEVICE_TOKEN"] = item["token"]
             process = subprocess.Popen([sys.executable, "-m", "wakecore_ui_runtime.desktop.node", "--state", str(self.root / "computer-node"), "--port", "0"],
-                                       env=env, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, umask=0o077)
-            import select
-            if not select.select([process.stdout], [], [], 15)[0]:
-                process.terminate()
-                raise DeviceError("本机节点启动超时。")
+                                       env=env, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, umask=0o077)
             try:
-                ready = json.loads(process.stdout.readline())
-                assert ready["protocol"] == "morning.computer-node/1"
+                # select.select fails above FD_SETSIZE; a partial line must not
+                # turn the bounded readiness wait into an unbounded readline.
+                output, deadline = b'', time.monotonic() + 15
+                with selectors.DefaultSelector() as selector:
+                    selector.register(process.stdout, selectors.EVENT_READ)
+                    while b'\n' not in output:
+                        remaining = deadline - time.monotonic()
+                        if remaining <= 0 or not selector.select(remaining):
+                            raise DeviceError('本机节点启动超时。', 'device_start_timeout')
+                        chunk = os.read(process.stdout.fileno(), 4096)
+                        if not chunk or len(output) + len(chunk) > 16384:
+                            raise ValueError('invalid readiness response')
+                        output += chunk
+                ready = json.loads(output.split(b'\n', 1)[0])
+                if ready.get('protocol') != 'morning.computer-node/1' or type(ready.get('port')) is not int or not 1 <= ready['port'] <= 65535:
+                    raise ValueError('invalid node protocol')
                 self.local_endpoint = f"http://127.0.0.1:{ready['port']}"
+            except DeviceError:
+                self._stop(process)
+                raise
             except Exception:
-                process.terminate()
+                self._stop(process)
                 raise DeviceError("本机节点启动失败，请检查 Computer 依赖。") from None
             self.process = process
 
@@ -144,9 +162,18 @@ class DeviceManager:
     def close(self):
         with self.lock:
             if self.process:
-                self.process.send_signal(signal.SIGINT)
-                try:
-                    self.process.wait(timeout=8)
-                except subprocess.TimeoutExpired:
-                    self.process.kill()
+                self._stop(self.process)
                 self.process = None
+                self.local_endpoint = None
+
+    @staticmethod
+    def _stop(process):
+        if process.poll() is None:
+            process.send_signal(signal.SIGINT)
+            try:
+                process.wait(timeout=8)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=3)
+        if process.stdout:
+            process.stdout.close()

@@ -57,9 +57,9 @@ class PulseAPI(WakeCoreAPI):
         from .agent import ConversationalAgent
 
         self.agent = ConversationalAgent(self, interpreter, dialogue, coding_runtime)
-        from .native_agent import NativeConversation
+        from .native_sessions import NativeSessions
 
-        self.native = NativeConversation(native_host) if native_host else None
+        self.native = NativeSessions(native_host) if native_host else None
         self.gateways = gateways
         from .gateway_service import GatewayService
         self.gateway_service = GatewayService(gateways, self.native, lambda: getattr(self, "gateway_changed", lambda: None)()) if gateways and self.native else None
@@ -107,10 +107,7 @@ class PulseAPI(WakeCoreAPI):
     def _chat(self, req, principal, args):
         if self.native:
             def prompt():
-                with self.native.operations:
-                    if self.gateway_service:
-                        self.gateway_service.assert_prompt_ready()
-                    return self.native.prompt(req.json(), req.header("Idempotency-Key"))
+                return self.native.prompt(req.json(), req.header("Idempotency-Key"), prepare=self.gateway_service.assert_prompt_ready if self.gateway_service else None)
             return self._native_result(prompt)
         return Response(200, self.agent.reply(principal, req.json(), req.header("Idempotency-Key")))
 
@@ -138,9 +135,7 @@ class PulseAPI(WakeCoreAPI):
             raise SchemaMismatch("无法识别的 Pi 操作")
         def execute():
             if command in ("prompt", "steer", "follow_up") and self.gateway_service:
-                with self.native.operations:
-                    self.gateway_service.assert_prompt_ready()
-                    return self.native.command(command, body.get("params", {}))
+                return self.native.command(command, body.get("params", {}), prepare=self.gateway_service.assert_prompt_ready)
             return self.native.command(command, body.get("params", {}))
         return self._native_result(execute)
 
@@ -150,9 +145,15 @@ class PulseAPI(WakeCoreAPI):
         body = req.json()
         if getattr(self, "platform", None) and self.platform.background_scope is not None and body.get("command") in ("reload", "package", "import_session", "update_native_preferences", "set_workspace_trust"):
             raise SchemaMismatch("请先停止或等待当前后台观察完成，再修改运行时资源。")
-        if body.get("command") not in {"start_agent", "resources", "sessions", "context", "reload", "set_tools", "providers", "models", "auth_login", "auth_logout", "auth_cancel", "package", "navigate_tree", "import_session", "native_preferences", "update_native_preferences", "set_workspace_trust"}:
+        if body.get("command") not in {"start_agent", "resources", "sessions", "context", "reload", "set_tools", "providers", "models", "auth_login", "auth_logout", "auth_cancel", "package", "navigate_tree", "import_session", "native_preferences", "update_native_preferences", "set_workspace_trust", "stop_session", "set_concurrency"}:
             raise SchemaMismatch("无法识别的 Pi 设置")
         def execute():
+            if body['command'] == 'sessions':
+                return self.native.sessions()
+            if body['command'] == 'stop_session':
+                return self.native.stop_session(body.get('params', {}).get('sessionId'))
+            if body['command'] == 'set_concurrency':
+                return self.native.set_limit(body.get('params', {}).get('limit'))
             if body["command"] in ("update_native_preferences", "set_workspace_trust"):
                 with self.native.operations:
                     self.native.assert_idle()
@@ -205,7 +206,7 @@ class PulseAPI(WakeCoreAPI):
         run = self.agent.store.snapshot().get("run")
         return Response(200, {"items": items, "dialogue": dialogue, "dialogue_revision": revision,
                               "dialogue_partial": since is not None and not native, "run": run,
-                              "agent_busy": bool(native["state"] and (native["state"].get("isStreaming") or native["state"].get("isCompacting"))) if native else self.agent.store.turn_lock.locked(),
+                              "agent_busy": bool(native.get('runtime_busy') or native["state"] and (native["state"].get("isStreaming") or native["state"].get("isCompacting"))) if native else self.agent.store.turn_lock.locked(),
                               "pi": {key: value for key, value in native.items() if key != "dialogue"} if native else None,
                               "runtime": {k: v for k, v in runtime.items() if k != "sessions"}, **self.metadata(),
                               "server_time": self.kernel.ctx.clock.utc_now().isoformat()})
@@ -539,7 +540,7 @@ class LocalPulseApp:
         if native_host and (client or self.platform):
             from .native_watch import NativeWatchTools, watch_schema
 
-            native_host.tool_handler = NativeWatchTools(self.api, self.principal)
+            self.api.native.configure_tools(lambda: NativeWatchTools(self.api, self.principal))
             native_host.watch_proposal_schema = watch_schema()
 
     def save_session(self, tenant, ref, session):
@@ -590,6 +591,13 @@ class LocalPulseApp:
             if route in ("/pulse/chat", "/pulse/pi"):
                 local["wakecore.max_body"] = 16 * 1024 * 1024
             local["PATH_INFO"] = route if route.startswith("/pulse/") else "/v1" + route
+            if self.api.native:
+                from wakecore.adapters.agent_runtime.native import NativePiError
+                try:
+                    with self.api.native.request_scope(environ.get('HTTP_X_MORNING_SESSION')):
+                        return self.api(local, start_response)
+                except NativePiError as exc:
+                    return self._json(start_response, 409, {'error': {'code': 'session_unavailable', 'message': str(exc)}})
             return self.api(local, start_response)
         if environ.get("REQUEST_METHOD") == "GET" and self.dist:
             file = (self.dist / path.lstrip("/")).resolve()
@@ -600,7 +608,8 @@ class LocalPulseApp:
             if file.is_file():
                 data = file.read_bytes()
                 start_response("200 OK", [("Content-Type", mimetypes.guess_type(file.name)[0] or "application/octet-stream"),
-                                          ("Content-Length", str(len(data))), ("X-Content-Type-Options", "nosniff")])
+                                          ("Content-Length", str(len(data))), ("X-Content-Type-Options", "nosniff"), ("X-Frame-Options", "DENY"),
+                                          ("Content-Security-Policy", "frame-ancestors 'none'; object-src 'none'; base-uri 'self'")])
                 return [data]
         return self._json(start_response, 404, {"error": {"message": "请先构建 Pulse 前端"}})
 

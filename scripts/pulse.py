@@ -186,7 +186,7 @@ def main():
             if app.platform:
                 app.platform.close()
             if coding_runtime:
-                coding_runtime.close()
+                app.api.native.close()
             if runtime_http:
                 runtime_http.shutdown()
             if runtime:

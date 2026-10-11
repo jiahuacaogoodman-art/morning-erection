@@ -46,6 +46,11 @@ def test_empty_native_selection_restores_without_fabricating_messages(native):
     host.rpc("get_state")
     conversation.command("new_session", {})
     conversation.command("set_session_name", {"name": "Empty work session"})
+    profile = host.gateways.save({'name': 'Empty session gateway', 'base_url': 'http://127.0.0.1:1/v1', 'model': 'restore-model', 'api': 'openai-responses', 'api_key': 'restore-fixture-key', 'model_options': {'reasoning': True}})
+    host.update_gateways()
+    profile = host.gateways.profile()
+    conversation.command('set_model', {'provider': profile['provider_id'], 'modelId': profile['model']})
+    conversation.command('set_thinking_level', {'level': 'high'})
     before = conversation.snapshot()["state"]
     assert not Path(before["sessionFile"]).exists(), "Pi deliberately does not persist setup-only sessions"
     assert host.rpc("get_messages")["messages"] == []
@@ -53,6 +58,9 @@ def test_empty_native_selection_restores_without_fabricating_messages(native):
     after = host.rpc("get_state")
     assert after["sessionId"] == before["sessionId"]
     assert after["sessionName"] == "Empty work session"
+    assert after['model']['provider'] == before['model']['provider']
+    assert after['model']['id'] == 'restore-model'
+    assert after['thinkingLevel'] == 'high'
     assert host.rpc("get_messages")["messages"] == []
     assert not Path(after["sessionFile"]).exists(), "GUI selection metadata must not fake a native conversation"
 

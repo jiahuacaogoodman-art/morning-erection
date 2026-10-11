@@ -22,6 +22,7 @@ from . import notifications
 from .devices import DeviceError, DeviceManager
 from .file_events import FileEvents
 from .platform_store import PlatformStore
+from .workspace import TaskWorkspace, mount_workspace
 
 
 class Platform:
@@ -41,7 +42,10 @@ class Platform:
             ctx.reasoning.visual_resolver = self.source.semantic_images
         self.modules = self.store.get("configuration", "modules") or {"watch": True, "computer": True}
         self.inspections, self.frames, self.previews = {}, {}, {}
+        self.observations, self.target_frames = {}, {}
         self.lock = threading.RLock()
+        self._runtime_values = {}
+        self.device_execution = {}
         self.worker_stop, self.stop = threading.Event(), threading.Event()
         self.worker = self.background = None
         self.native_run = None
@@ -50,10 +54,62 @@ class Platform:
         self.file_events = FileEvents(api, principal)
         self.background_error = None
         if api.native:
-            api.native.host.listeners.append(self.pi_event)
+            if hasattr(api.native, 'add_listener'):
+                api.native.add_listener(self.pi_event)
+            else:
+                api.native.host.listeners.append(self.pi_event)
         api._add("GET", r"/pulse/platform", self.get)
         api._add("POST", r"/pulse/platform", self.post)
         api._add("GET", r"/pulse/events", self.events)
+        self.workspace = TaskWorkspace(self.store, self.work_context, lambda value: api.native.host.redact(value) if api.native else value, runtime_dir=api.native.host.runtime_path.parent if api.native else None)
+        mount_workspace(api, self.workspace)
+
+    def runtime_values(self):
+        key = id(self.api.native.host) if self.api.native else 0
+        return self._runtime_values.setdefault(key, {})
+
+    @property
+    def native_run(self):
+        return self.runtime_values().get('run')
+
+    @native_run.setter
+    def native_run(self, value):
+        self.runtime_values()['run'] = value
+
+    @property
+    def background_scope(self):
+        return self.runtime_values().get('scope')
+
+    @background_scope.setter
+    def background_scope(self, value):
+        self.runtime_values()['scope'] = value
+
+    @property
+    def background_goal(self):
+        return self.runtime_values().get('goal')
+
+    @background_goal.setter
+    def background_goal(self, value):
+        self.runtime_values()['goal'] = value
+
+    def work_context(self):
+        host = self.api.native.host if self.api.native else None
+        state = getattr(self.api.native, 'slot', {}).get('state', {}) if self.api.native else {}
+        if not state and host and host.agent_ready:
+            state = host.rpc('get_state', timeout=5)
+        return {'session_id': state.get('sessionId'), 'session_path': state.get('sessionFile'),
+                'workspace': str(host.info.get('workspace', host.workspace)) if host else str(self.root)}
+
+    def remember_frame(self, device, frame):
+        with self.lock:
+            self.frames[device] = frame
+            target = frame.get('app') or 'screen:' + str(frame.get('display'))
+            self.target_frames[(device, target)] = frame
+            if frame.get('id'):
+                self.observations[(device, frame['id'])] = frame
+            self.observations = {key: value for key, value in self.observations.items() if time.time() - value.get('at', 0) < 300}
+            if len(self.observations) > 200:
+                self.observations.pop(next(iter(self.observations)))
 
     def assert_enabled(self, name):
         if not self.modules.get(name):
@@ -68,6 +124,7 @@ class Platform:
                                   "file_events": self.file_events.error or "系统事件与定时观察", "error": self.background_error},
                 "devices": self.devices.public(), "watches": [w for w in items if w["task_id"] not in hidden],
                 "computer": self.store.list("computer", limit=60), "runs": self.store.list("pi_run", limit=60),
+                "terminals": [self.workspace.public(item) for item in self.store.list('terminal', limit=60)],
                 "wakeups": self.store.list("wakeup", limit=60), "notifications": self.store.list("notification", limit=40),
                 "events": self.store.events(max(0, self.latest_seq() - 50))}
 
@@ -119,21 +176,23 @@ class Platform:
             result = self.devices.call(device, "/permissions", value)
             self.store.event("computer.permissions_changed", device, {"paused": result["paused"]})
             if op == "takeover":
-                for job in self.store.list("computer", states=("approval",)):
+                for job in self.store.list("computer", states=("approval", "queued")):
                     if job["device_id"] == device:
                         self.store.save("computer", job["id"], {**job, "state": "cancelled"})
             return result
         if op in ("observe", "screen"):
             result = self.devices.call(device, "/" + op, {k: body[k] for k in ("app", "display", "region") if k in body})
-            self.frames[device] = result
+            self.remember_frame(device, result)
             return result
         if op == "last_frame":
+            if body.get('app') or body.get('display'):
+                return self.target_frames.get((device, body.get('app') or 'screen:' + str(body['display']))) or {}
             return self.frames.get(device) or {}
         if op == "action_preview":
             return {"image": self.previews.get(body.get("id"))}
         if op == "propose_action":
             validate_action(body.get("method"), body.get("arguments"))
-            observation = self.frames.get(device)
+            observation = self.observations.get((device, body.get('observation_id')))
             if not observation or observation.get("id") != body.get("observation_id") or observation.get("app") != body.get("app"):
                 raise DeviceError("请先观察当前应用，再准备操作。", "observation_required")
             if not isinstance(body.get("goal"), str) or not body["goal"].strip():
@@ -141,7 +200,7 @@ class Platform:
             # Refresh before asking a person to review. Model latency must not
             # consume their approval window or silently change the target.
             fresh = self.devices.call(device, "/observe", {"app": body["app"]})
-            self.frames[device] = fresh
+            self.remember_frame(device, fresh)
             if fresh["fingerprint"] != observation["fingerprint"]:
                 raise DeviceError("窗口在准备操作时发生了变化，请使用新观察重新决定动作。", "screen_changed")
             coordinates = body.get("method") == "drag" or body.get("method") == "click" and "element_index" not in body["arguments"]
@@ -157,7 +216,8 @@ class Platform:
                     self.previews.pop(next(iter(self.previews)))
             target = next((element["label"] for element in fresh.get("elements", []) if element["index"] == str(body["arguments"].get("element_index"))), None)
             job = self.store.save("computer", key, {**payload, "goal": body["goal"][:500], "state": "approval", "created": time.time(),
-                "expires": fresh["at"] + 120, "digest": digest(payload), "session_path": self.session_path(), "target": target, "has_preview": bool(fresh.get("image")), "model_binding": self.model_binding() if self.api.native else None})
+                "expires": fresh["at"] + 120, "digest": digest(payload), "session_path": self.session_path(), "target": target, "has_preview": bool(fresh.get("image")), "model_binding": self.model_binding() if self.api.native else None,
+                "tool_call_id": body.get('_tool_call_id'), "run_id": self.native_run})
             self.store.event("computer.approval_requested", key, {"goal": job["goal"], "device_id": device})
             return {"computer_action": job, "message": "操作已准备好，等待你在界面批准。"}
         if op in ("approve_action", "reject_action"):
@@ -172,7 +232,7 @@ class Platform:
                 if time.time() > job["expires"]:
                     self.store.save("computer", job["id"], {**job, "state": "expired"})
                     raise DeviceError("操作确认已过期，请重新观察。")
-                job = self.store.save("computer", job["id"], {**job, "state": "running"})
+                job = self.store.save("computer", job["id"], {**job, "state": "queued"})
                 threading.Thread(target=self.execute, args=(job,), daemon=True).start()
                 return job
         if op == "inspect_source":
@@ -242,7 +302,7 @@ class Platform:
 
     def session_path(self):
         if self.api.native:
-            saved = self.root / "pi/selected-session.json"
+            saved = getattr(self.api.native.host, 'selection_path', self.root / "pi/selected-session.json")
             if saved.exists():
                 return json.loads(saved.read_text()).get("path")
         return None
@@ -256,11 +316,24 @@ class Platform:
         return binding
 
     def execute(self, job):
+        with self.lock:
+            gate = self.device_execution.setdefault(job['device_id'], threading.Lock())
+        with gate:
+            latest = self.store.get('computer', job['id'])
+            if not latest or latest['state'] != 'queued':
+                return
+            if time.time() > latest['expires']:
+                self.store.save('computer', job['id'], {**latest, 'state': 'expired', 'error': '等待设备期间观察已过期，请重新观察。'})
+                return
+            job = self.store.save('computer', job['id'], {**latest, 'state': 'running'})
+            self._execute_action(job)
+
+    def _execute_action(self, job):
         try:
             self.assert_enabled("computer")
             result = self.devices.call(job["device_id"], "/act", {"key": job["id"], **{k: job[k] for k in ("app", "method", "arguments", "observation_id")}})
             if result.get("after"):
-                self.frames[job["device_id"]] = result["after"]
+                self.remember_frame(job["device_id"], result["after"])
             state = "observed" if result.get("status") == "observed" else "unknown"
             job = self.store.save("computer", job["id"], {**job, "state": state, "result": {k: v for k, v in result.items() if k != "after"}})
             self.store.event("computer." + state, job["id"], {"device_id": job["device_id"]})
@@ -268,7 +341,7 @@ class Platform:
                 self.enqueue_wakeup("computer:" + job["id"], job["session_path"], "已批准的电脑动作已执行，请使用 morning_computer 重新观察并核验目标，不能仅凭发送成功宣称完成。", job["goal"], {"computer": {"device_id": job["device_id"], "app": job["app"]}, "wake_model_binding": job.get("model_binding")})
         except Exception as exc:
             # A lost HTTP response can still mean the action reached the node.
-            known_no_effect = isinstance(exc, DeviceError) and exc.code in {"invalid_action", "outside_window", "input_too_long", "human_credentials", "system_shortcut", "permission_required", "stale_observation", "screen_changed", "invalid_element", "module_disabled", "device_disabled", "taken_over"}
+            known_no_effect = isinstance(exc, DeviceError) and exc.code in {"invalid_action", "outside_window", "input_too_long", "human_credentials", "system_shortcut", "permission_required", "stale_observation", "screen_changed", "invalid_element", "module_disabled", "device_disabled", "taken_over", "observation_incomplete"}
             self.store.save("computer", job["id"], {**job, "state": "failed" if known_no_effect else "unknown", "error": str(exc)[:300]})
 
     def prepare_watch(self, body):
@@ -413,6 +486,15 @@ class Platform:
         self.store.save("wakeup", key, {"state": "pending", "session_path": session_path, "context": context[:5000], "goal": goal[:1000], "scope": scope or {}})
 
     def dispatch_wakeup(self, key, user_requested=False):
+        item = self.store.get('wakeup', key)
+        if item and self.api.native and hasattr(self.api.native, 'find'):
+            slot = self.api.native.find(path=item.get('session_path'), load=False)
+            if slot:
+                with self.api.native.use(slot):
+                    return self._dispatch_wakeup_current(key, user_requested)
+        return self._dispatch_wakeup_current(key, user_requested)
+
+    def _dispatch_wakeup_current(self, key, user_requested=False):
         item = self.store.get("wakeup", key)
         if not item or item["state"] not in ("pending", "waiting"):
             return item or {}
@@ -505,3 +587,4 @@ class Platform:
         if self.background:
             self.background.join(timeout=5)
         self.devices.close()
+        self.workspace.close()

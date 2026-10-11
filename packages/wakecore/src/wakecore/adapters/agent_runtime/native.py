@@ -18,10 +18,11 @@ class NativePiError(RuntimeError):
 
 
 class NativePiHost:
-    def __init__(self, *, runtime_path, workspace, state_dir, gateways, legacy_messages=None, agent_dir=None):
+    def __init__(self, *, runtime_path, workspace, state_dir, gateways, legacy_messages=None, agent_dir=None, selection_path=None):
         self.runtime_path = Path(runtime_path).resolve()
         self.workspace = Path(workspace).resolve()
         self.state_dir = Path(state_dir).resolve()
+        self.selection_path = Path(selection_path) if selection_path else self.state_dir / 'pi' / 'selected-session.json'
         self.gateways = gateways
         self.legacy_messages = legacy_messages or []
         self.agent_dir = str(Path(agent_dir).resolve()) if agent_dir else None
@@ -113,7 +114,7 @@ class NativePiHost:
             credentials = configuration["credentials"]
             self._remember_secrets(credentials)
             empty_session = None
-            selected = self.state_dir / "pi" / "selected-session.json"
+            selected = self.selection_path
             if not session_file and not fresh and selected.exists():
                 try:
                     saved = json.loads(selected.read_text())
@@ -264,7 +265,10 @@ class NativePiHost:
         try:
             if not self.tool_handler:
                 raise NativePiError("Morning 浏览器扩展尚未连接。")
-            result = self.tool_handler(frame["params"]["name"], frame["params"].get("args") or {})
+            params = dict(frame["params"].get("args") or {})
+            if frame["params"].get('tool_call_id'):
+                params['_tool_call_id'] = frame['params']['tool_call_id']
+            result = self.tool_handler(frame["params"]["name"], params)
             self._private_send({"type": "host_response", "id": frame["id"], "ok": True, "data": self.sanitize(result)})
         except Exception as exc:
             self._private_send({"type": "host_response", "id": frame["id"], "ok": False, "error": self.redact(str(exc))})
@@ -359,7 +363,7 @@ class NativePiHost:
     def remember_session(self, path, *, state=None, workspace=None):
         if not state and (not path or not Path(path).is_file()):
             return
-        target = self.state_dir / "pi" / "selected-session.json"
+        target = self.selection_path
         target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         data = {"path": path}
         if state and (not path or not Path(path).is_file()):

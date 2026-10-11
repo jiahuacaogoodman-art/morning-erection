@@ -14,6 +14,10 @@ def tool_label(name, args=None):
     if name == "morning_computer":
         return {"observe": "观察应用", "screen": "观察屏幕", "inventory": "读取应用清单", "devices": "查看设备",
                 "propose_action": "准备操作确认", "status": "读取操作记录"}.get((args or {}).get("operation"), "电脑工具")
+    if name == 'morning_terminal':
+        return {'start': '启动任务终端', 'read': '读取终端输出', 'input': '输入终端', 'stop': '停止终端', 'list': '查看任务终端'}.get(args.get('operation'), '任务终端')
+    if name == 'morning_preview':
+        return '打开任务预览'
     return {"morning_inspect_source": "读取监控来源", "morning_prepare_source_watch": "准备环境驻守",
             "morning_inspect_page": "查看网页", "morning_prepare_watch": "准备网页驻守", "morning_watches": "管理驻守"}.get(name, name or "工具")
 
@@ -69,6 +73,14 @@ def project_messages(messages, streaming=None, running_tools=None):
                         output=item["text"], arguments=call.get("arguments"))
             if isinstance(message.get("details"), dict) and message["details"].get("diff"):
                 item["diff"] = message["details"]["diff"]
+            if isinstance(message.get('details'), dict):
+                details = message['details']
+                if isinstance(details.get('computer_action'), dict):
+                    item['computer_action_id'] = details['computer_action'].get('id')
+                if isinstance(details.get('terminal'), dict):
+                    item['terminal_id'] = details['terminal'].get('id')
+                if isinstance(details.get('preview'), dict):
+                    item['preview_id'] = details['preview'].get('id')
         elif role == "bashExecution":
             item.update(role="tool", tool="bash", text=message.get("command", "终端"), output=message.get("output", ""),
                         state="error" if message.get("exitCode") or message.get("cancelled") else "done")

@@ -24,6 +24,8 @@ class PlatformStore:
         os.chmod(self.path, 0o600)
         for job in self.list("computer", states=("running",)):
             self.save("computer", job["id"], {**job, "state": "unknown", "error": "服务重启，请观察后核验；不会重发操作。"})
+        for job in self.list('computer', states=('queued',)):
+            self.save('computer', job['id'], {**job, 'state': 'cancelled', 'error': '服务已重启；尚未开始的操作没有执行。'})
         for job in self.list("computer", states=("approval",)):
             self.save("computer", job["id"], {**job, "state": "expired", "error": "服务已重启，请重新观察后确认。"})
         for job in self.list("wakeup", states=("dispatching",)):

@@ -49,6 +49,21 @@ class NativeWatchTools:
             if operation not in ("inventory", "observe", "screen", "propose_action"):
                 raise SchemaMismatch("Pi 不能修改设备权限或代替用户审批。")
             return platform.command(params)
+        if platform and name == 'morning_terminal':
+            op = params.get('operation')
+            if op == 'list':
+                return {'terminals': platform.workspace.state()['terminals']}
+            operation = {'start': 'terminal_create', 'read': 'terminal_read', 'input': 'terminal_input', 'stop': 'terminal_stop'}.get(op)
+            if not operation:
+                raise SchemaMismatch('无法识别的终端操作。')
+            body = {**params, 'operation': operation, 'request_id': params.get('_tool_call_id'), 'input_id': params.get('_tool_call_id')}
+            result = platform.workspace.command(body)
+            if operation == 'terminal_read' and len(result['output']) > 16000:
+                result['output'] = result['output'][-16000:]
+                result['truncated'] = True
+            return {'terminal': result} if operation == 'terminal_create' else result
+        if platform and name == 'morning_preview':
+            return {'preview': platform.workspace.command({**params, 'operation': 'preview_open'})}
         if platform and name in ("morning_inspect_source", "morning_prepare_source_watch"):
             return platform.command({**params, "operation": "inspect_source" if name == "morning_inspect_source" else "prepare_watch"})
         if platform and name in ("morning_inspect_page", "morning_prepare_watch", "morning_watches"):

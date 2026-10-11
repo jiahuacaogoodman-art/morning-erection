@@ -110,8 +110,11 @@ const createRuntime = async ({cwd, sessionManager, sessionStartEvent}) => {
   })
   const active = profiles.find(profile => profile.id === activeProfileId)
   const hasSelection = sessionManager.getBranch().some(entry => entry.type === 'model_change')
-  const model = !hasSelection && active ? models.getModel(active.provider_id, active.model) : undefined
-  return {...await createAgentSessionFromServices({services, sessionManager, sessionStartEvent, model}),
+  // Pi intentionally does not persist setup-only sessions. Give the SDK their
+  // saved selection explicitly; in-memory model_change entries are not a resume.
+  const empty = config.emptySession?.session_id === sessionManager.getSessionId() ? config.emptySession : null
+  const model = empty?.model ? models.getModel(empty.model.provider, empty.model.id) : !hasSelection && active ? models.getModel(active.provider_id, active.model) : undefined
+  return {...await createAgentSessionFromServices({services, sessionManager, sessionStartEvent, model, ...(empty?.thinking_level?{thinkingLevel:empty.thinking_level}:{})}),
     services, diagnostics:services.diagnostics}
 }
 let runtime, startingAgent, authController

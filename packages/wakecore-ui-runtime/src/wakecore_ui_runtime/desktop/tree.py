@@ -170,6 +170,10 @@ def parse(text: str) -> AppState:
     if start < 0:
         raise TreeError("no <app_state> in the bridge's answer")
     body = text[start + len("<app_state>"):end if end > start else len(text)]
+    # Some bridge/client versions ignore disableDiff. Never mistake their
+    # unchanged/delta summary for a new full tree or reuse stale element IDs.
+    if re.search(r'(?m)^(?:There has been no change in the accessibility tree|The following is a diff from the previous accessibility tree|Removed element IDs:|[+~]\s*\d+\s)', body):
+        raise TreeError("bridge returned a partial accessibility tree; a full observation is required")
     app_path = bundle = window = None
     pid: Optional[int] = None
     nodes: list[Node] = []
