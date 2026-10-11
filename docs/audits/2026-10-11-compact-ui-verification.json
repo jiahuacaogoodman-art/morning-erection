@@ -157,7 +157,12 @@
       "credential_removal": true,
       "ok": true
     },
-    "post_restart_current_state": "Exact match for current session, model, thinking level, dialogue count and watch lifecycle/version."
+    "post_restart_current_state": "Exact match for current session, model, thinking level, dialogue count and watch lifecycle/version.",
+    "final_frontend_targeted": {
+      "command": "uv run pytest tests/ui/test_native_frontend.py -q",
+      "passed": 10,
+      "covers": "包含最终横向档位、发送按钮选择、拖动取消、故障重试与原生命令兼容。"
+    }
   },
   "reproduce": [
     "npm --prefix apps/pulse run build",

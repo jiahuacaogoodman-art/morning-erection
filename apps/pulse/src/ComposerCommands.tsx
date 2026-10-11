@@ -27,7 +27,12 @@ export function useComposerCommands({pi,thinking,text,setText,input}:{pi:PiSnaps
     return()=>{alive=false}
   },[candidate,pi?.state?.sessionId,reload])
   useEffect(()=>{setActive(0)},[query,arg,levelMode])
-  useEffect(()=>{if(!visible)return;const outside=(event:PointerEvent)=>{if(!panel.current?.contains(event.target as Node)&&event.target!==input.current)setDismissed(tokenKey)};document.addEventListener('pointerdown',outside);return()=>document.removeEventListener('pointerdown',outside)},[visible,tokenKey])
+  useEffect(()=>{if(!visible)return;const outside=(event:PointerEvent)=>{
+    // Keep the picker alive through the form's submit event. Otherwise pointerdown
+    // dismisses it before onSubmit can consume the selection as a local action.
+    const submit=event.target instanceof Element?event.target.closest<HTMLButtonElement>('.send-button'):null
+    if(!panel.current?.contains(event.target as Node)&&event.target!==input.current&&submit?.form!==input.current?.form)setDismissed(tokenKey)
+  };document.addEventListener('pointerdown',outside);return()=>document.removeEventListener('pointerdown',outside)},[visible,tokenKey])
   const items:Item[]=levelMode?thinking.levels.filter(value=>`${value} ${thinkingNames[value]}`.toLowerCase().includes((arg||'').toLowerCase())).map(value=>({id:value,kind:'level',value,title:thinkingNames[value]||value,description:thinkingDescriptions[value]||value})):[
     ...(thinking.supported&&!commands.some(item=>item.name===query)&&(!query||`${localName} 思考 深度 thinking effort`.includes(query.toLowerCase()))?[{id:'local-thinking',kind:'thinking' as const,title:'思考深度',description:'拖动或选择当前会话的思考档位'}]:[]),
     ...commands.filter(item=>`${item.name} ${item.description||''}`.toLowerCase().includes(query.toLowerCase())).map(item=>({id:`native:${item.name}`,kind:'native' as const,value:item.name,title:`/${item.name}`,description:item.description||({skill:'Skill',extension:'扩展命令',prompt:'提示词'}[item.source]||item.source)}))
