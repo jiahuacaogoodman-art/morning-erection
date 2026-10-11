@@ -122,45 +122,68 @@ class SqliteStore:
         if conn is None:
             conn = sqlite3.connect(self.path, isolation_level=None, check_same_thread=False,
                                    timeout=self._busy / 1000)
-            conn.execute(f"PRAGMA busy_timeout = {self._busy}")
-            conn.execute("PRAGMA foreign_keys = ON")
-            if self.path != ":memory:":
-                conn.execute("PRAGMA journal_mode = WAL")
+            try:
+                conn.execute(f"PRAGMA busy_timeout = {self._busy}")
+                conn.execute("PRAGMA foreign_keys = ON")
+                if self.path != ":memory:":
+                    conn.execute("PRAGMA journal_mode = WAL")
+            except BaseException:
+                conn.close()
+                raise
             self._local.conn = conn
             with self._lock:
                 self._all.append(conn)
         return conn
 
+    def _release(self, conn: sqlite3.Connection) -> None:
+        # The HTTP server creates short-lived request threads. Retaining their
+        # thread-local connections in _all exhausts descriptors during polling.
+        # A memory database must retain its connection to preserve its contents.
+        if self.path == ":memory:":
+            return
+        try:
+            conn.close()
+        finally:
+            if getattr(self._local, "conn", None) is conn:
+                self._local.conn = None
+            with self._lock:
+                if conn in self._all:
+                    self._all.remove(conn)
+
     def migrate(self) -> None:
         conn = self._conn()
-        conn.execute("BEGIN IMMEDIATE")
         try:
+            conn.execute("BEGIN IMMEDIATE")
             for stmt in self._sql.ddl():
                 conn.execute(stmt)
             conn.execute("COMMIT")
         except BaseException:
-            conn.execute("ROLLBACK")
+            if conn.in_transaction:
+                conn.execute("ROLLBACK")
             raise
+        finally:
+            self._release(conn)
 
     def ddl(self) -> list[str]:
         return self._sql.ddl()
 
     @contextmanager
     def transaction(self) -> Iterator[SqliteUnitOfWork]:
-        conn = self._conn()
         if getattr(self._local, "in_tx", False):
             raise RuntimeError("nested transactions are not supported")
+        conn = self._conn()
         self._local.in_tx = True
-        conn.execute("BEGIN IMMEDIATE")
         try:
+            conn.execute("BEGIN IMMEDIATE")
             yield SqliteUnitOfWork(conn, self._sql, self.clock)
-        except BaseException:
-            conn.execute("ROLLBACK")
-            raise
-        else:
             conn.execute("COMMIT")
+        except BaseException:
+            if conn.in_transaction:
+                conn.execute("ROLLBACK")
+            raise
         finally:
             self._local.in_tx = False
+            self._release(conn)
 
     def close(self) -> None:
         with self._lock:
