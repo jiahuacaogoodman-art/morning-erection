@@ -9,6 +9,7 @@ import {PrivateControl} from './private-control.mjs'
 import {secretRedactor, VaultCredentialStore} from './native-credentials.mjs'
 import {publicModel, registerGateways, testGateway} from './native-gateways.mjs'
 import {createMorningExtension} from './morning-extension.mjs'
+import {createNativePreferences} from './native-preferences.mjs'
 
 const descriptor = Number(process.env.MORNING_CONTROL_FD)
 delete process.env.MORNING_CONTROL_FD
@@ -114,6 +115,18 @@ const createRuntime = async ({cwd, sessionManager, sessionStartEvent}) => {
     services, diagnostics:services.diagnostics}
 }
 let runtime, startingAgent, authController
+const preferences = createNativePreferences({cwd:config.workspace,agentDir,getSession:()=>runtime?.session,getTrust:cwd=>trustStore.get(cwd)===true,
+  applyRuntime:async (session,fields) => {
+    const settings = session.settingsManager
+    session.agent.steeringMode = settings.getSteeringMode()
+    session.agent.followUpMode = settings.getFollowUpMode()
+    session.agent.transport = settings.getTransport()
+    session.agent.thinkingBudgets = settings.getThinkingBudgets()
+    session.agent.maxRetryDelayMs = settings.getProviderRetrySettings().maxRetryDelayMs
+    http.configureHttpDispatcher(settings.getHttpIdleTimeoutMs())
+    if (fields.some(key=>['skills','extensions','prompts','enableSkillCommands','shellPath','shellCommandPrefix','images.autoResize'].includes(key))) await session.reload()
+  },
+})
 async function startAgent() {
   if (runtime) return {sessionId:runtime.session.sessionId, workspace:runtime.cwd}
   if (!startingAgent) startingAgent = (async () => {
@@ -149,6 +162,19 @@ const resourceMetadata = () => {
 control.handler = async (method, params) => {
   const session = runtime?.session
   switch (method) {
+    case 'native_preferences': return redact.value(preferences.read())
+    case 'set_workspace_trust': {
+      const cwd = runtime?.cwd || config.workspace
+      if (params.workspace !== cwd || typeof params.trusted !== 'boolean') throw new Error('工作区已变化，请重新确认授权目标。')
+      if (backgroundGrant || preferences.applying || session && !session.isIdle) throw new Error('请先停止或等待当前任务结束，再修改工作区信任。')
+      trustStore.set(cwd,params.trusted)
+      if (session) {session.settingsManager.setProjectTrusted(params.trusted); await session.reload()}
+      return redact.value(preferences.read())
+    }
+    case 'update_native_preferences': {
+      if (backgroundGrant) throw new Error('请先停止或等待后台观察结束，再修改 Pi 设置。')
+      return redact.value(await preferences.update(params))
+    }
     case 'start_agent': return startAgent()
     case 'resolve_path': return {path:path.resolve(params.path)}
     case 'shutdown': await runtime?.dispose(); setTimeout(() => process.exit(0), 20); return {}
@@ -166,7 +192,7 @@ control.handler = async (method, params) => {
     case 'set_tools': if (!session) throw new Error('请先启动 Agent。'); if (backgroundGrant) throw new Error('请等待后台观察完成，再修改活动工具。'); session.setActiveToolsByName(params.names); return resourceMetadata()
     case 'background_turn': {
       if (!config.platformTools) throw new Error('Morning background extensions are disabled')
-      if (!session || !session.isIdle || backgroundGrant) return {accepted:false, reason:'busy'}
+      if (!session || !session.isIdle || backgroundGrant || preferences.applying) return {accepted:false, reason:'busy'}
       const binding = modelBinding(session)
       if (!params.modelBinding || params.modelBinding.provider !== binding?.provider || params.modelBinding.origin !== binding?.origin) return {accepted:false,reason:'model_changed'}
       const original = session.getActiveToolNames()
@@ -247,7 +273,10 @@ control.handler = async (method, params) => {
       gatewayTests.get(params.requestId)?.controller.abort()
       return {cancelled:true}
     }
-    case 'models': return (await models.getAvailable()).map(model => publicModel(model, profiles.find(p => p.provider_id === model.provider)))
+    case 'models': {
+      const names = new Map(models.getProviders().map(provider=>[provider.id,provider.name]))
+      return (await models.getAvailable()).map(model => ({...publicModel(model, profiles.find(p => p.provider_id === model.provider)),provider_name:names.get(model.provider)||model.provider}))
+    }
     case 'auth_login': {
       if (authController) throw new Error('请先完成或取消正在进行的登录。')
       authController = new AbortController()

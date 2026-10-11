@@ -234,6 +234,7 @@ def test_markdown_retry_navigation_and_theme_persistence(ui, tmp_path):
     no_axe_errors(page)
     page.screenshot(path=str(tmp_path / "markdown-desktop.png"))
     page.get_by_role("button", name="设置", exact=True).click()
+    page.get_by_role("tab", name="外观", exact=True).click()
     page.get_by_role("radio", name="深色", exact=True).click()
     page.wait_for_function("document.documentElement.dataset.theme === 'dark'")
     no_axe_errors(page)

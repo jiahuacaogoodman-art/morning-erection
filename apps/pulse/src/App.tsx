@@ -1,7 +1,8 @@
-import { useEffect, useId, useRef, useState } from 'react'
-import type { FormEvent, ReactNode } from 'react'
-import { AlertCircle, ArrowDown, ArrowUp, Check, ChevronRight, Eye, FolderOpen, Menu, MessageSquare, Monitor, ListTodo, Laptop, Paperclip, RotateCw, Settings as SettingsIcon, SlidersHorizontal, Square, SquarePen, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import type { FormEvent } from 'react'
+import { AlertCircle, ArrowDown, ArrowUp, Check, ChevronRight, Menu, PanelLeftClose, PanelLeftOpen, Paperclip, RotateCw, SlidersHorizontal, Square, X } from 'lucide-react'
 import { api, ApiError } from './api'
+import { Dialog } from './Dialog'
 import { StatusBar } from './StatusBar'
 import { Timeline } from './Timeline'
 import { SettingsView, alertUser, useSettings } from './Settings'
@@ -10,6 +11,10 @@ import { MorningMark } from './Brand'
 import { NativeInteraction, NativePanel, piCommand, piControl } from './NativePi'
 import type {PiSession} from './NativePi'
 import {ComputerApprovals, PlatformModules, PlatformView, usePlatform} from './Platform'
+import {Sidebar} from './Sidebar'
+import {ModelPicker} from './ModelPicker'
+import {useThinkingLevel} from './ThinkingControl'
+import {useComposerCommands} from './ComposerCommands'
 import type {PlatformPage} from './Platform'
 
 function value(v: unknown): string {return v === true ? '已出现' : v === false ? '未出现' : v == null ? '尚未读到' : String(v)}
@@ -59,38 +64,6 @@ function usePulse() {
   return {data, error, clockOffset, refresh: () => setRevision(r => r + 1)}
 }
 
-function Dialog({title, children, close, wide = false}: {title: string; children: ReactNode; close: () => void; wide?: boolean}) {
-  const ref = useRef<HTMLDivElement>(null)
-  const id = useId()
-  const closeRef = useRef(close)
-  closeRef.current = close
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement
-    const focusable = () => Array.from(ref.current?.querySelectorAll<HTMLElement>('button,input,textarea,select,a[href],[tabindex="0"]') || [])
-      .filter(el => !el.hasAttribute('disabled') && el.getClientRects().length > 0)
-    focusable()[0]?.focus()
-    const handle = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {event.preventDefault(); closeRef.current()}
-      if (event.key === 'Tab') {
-        const elements = focusable(), first = elements[0], last = elements[elements.length - 1]
-        if (event.shiftKey && document.activeElement === first) {event.preventDefault(); last?.focus()}
-        else if (!event.shiftKey && document.activeElement === last) {event.preventDefault(); first?.focus()}
-      }
-    }
-    document.addEventListener('keydown', handle)
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {document.removeEventListener('keydown', handle); document.body.style.overflow = prevOverflow; previous?.focus()}
-  }, [])
-  return <div className="dialog-scrim" onMouseDown={e => {if (e.target === e.currentTarget) close()}}>
-    <div ref={ref} className={`drawer ${wide ? 'wide' : ''}`} role="dialog" aria-modal="true" aria-labelledby={id}>
-      <header className="drawer-header"><div><span className="eyebrow">PULSE</span><h2 id={id}>{title}</h2></div>
-        <button className="icon-button" aria-label="关闭" onClick={close}><X size={18}/></button></header>{children}
-    </div>
-  </div>
-}
-
-
 function WatchSettings({watch, close, mutate}: {watch: Watch; close: () => void; mutate: (path: string, body: unknown) => Promise<unknown>}) {
   const [minimum, setMinimum] = useState(watch.configuration.polling.min_seconds)
   const [maximum, setMaximum] = useState(watch.configuration.polling.max_seconds)
@@ -127,6 +100,9 @@ export default function App() {
   useEffect(() => {const key = (e:KeyboardEvent) => {if((e.metaKey || e.ctrlKey) && /^[1-6]$/.test(e.key)){e.preventDefault();setView((['chat','computer','watch','tasks','devices','settings'] as const)[Number(e.key)-1]);setMobileNav(false)}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key)}, [])
   const app = useSettings()
   const [mobileNav, setMobileNav] = useState(false)
+  const [sidebarExpanded,setSidebarExpanded] = useState(()=>localStorage.getItem('morning:sidebar')==='expanded')
+  useEffect(()=>{localStorage.setItem('morning:sidebar',sidebarExpanded?'expanded':'collapsed')},[sidebarExpanded])
+  useEffect(()=>{const key=(event:KeyboardEvent)=>{if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='b'&&!(event.target instanceof Element&&event.target.closest('input,textarea,[contenteditable=true]'))){event.preventDefault();setSidebarExpanded(value=>!value)}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key)},[])
   const [smallScreen, setSmallScreen] = useState(() => window.matchMedia('(max-width:720px)').matches)
   const [prompt, setPrompt] = useState('')
   const [now, setNow] = useState(Date.now())
@@ -146,9 +122,10 @@ export default function App() {
   const handledNotice = useRef<string | number>('')
   const dialogue = data?.dialogue || []
   const agentWorking = messageBusy || !!data?.agent_busy
-  const workspaceName = data?.workspace?.split(/[\\/]/).filter(Boolean).at(-1)
+  const thinking = useThinkingLevel(pi,agentWorking,refresh)
+  const commands = useComposerCommands({pi,thinking,text:prompt,setText:setPrompt,input:composer})
   const [following, setFollowing] = useState(true)
-  const tasks = data?.items.filter(t => !['DRAFT','CANCELLED','EXPIRED'].includes(t.lifecycle)) || []
+  const tasks = ((!platform.error && platform.data?.watches) || data?.items || []).filter(t => !['DRAFT','CANCELLED','EXPIRED'].includes(t.lifecycle))
   const selected = tasks.find(t => t.task_id === selectedId) || tasks[0] || null
   const urgent = tasks.find(t => t.state === 'approval') || tasks.find(t => t.state === 'attention')
   const computerUrgent = platform.data?.computer.find(job=>job.state==='approval') || platform.data?.computer.find(job=>!job.dismissed&&['failed','unknown','expired'].includes(job.state))
@@ -211,7 +188,7 @@ export default function App() {
     try {
       const result = await api<{queued?: boolean; reason?: string; next_check_at?: string}>(path, body)
       if (result.queued === false) setToast(result.reason === 'already_checking' ? '已经在确认页面了' : '为避免过于频繁的请求，会在允许的时间确认')
-      refresh()
+      refresh(); platform.refresh()
       return result
     } catch (e) {setToast(e instanceof Error ? e.message : '操作暂时没有完成'); throw e}
   }
@@ -220,9 +197,10 @@ export default function App() {
   const startWatch = async (draft: Draft) => {
     await api(`/pulse/watches/${draft.task_id}/start`, {spec_digest: draft.spec_digest})
     setSelectedId(draft.task_id)
-    refresh()
+    refresh(); platform.refresh()
   }
   const onCompose = async (e: FormEvent) => {    e.preventDefault()
+    if(thinking.changing||commands.interceptSubmit())return
     if ((!prompt.trim() && !images.length) || messageBusy || (agentWorking && !pi)) return
     const text = prompt.trim()
     setPrompt(''); setMessageBusy(true); setFollowing(true)
@@ -241,39 +219,20 @@ export default function App() {
     catch (e) {setToast(e instanceof Error ? e.message : '停止没有完成')}
   }
   return <div className="app-shell">
-    {mobileNav && <button className="nav-scrim" aria-label="关闭导航" onClick={() => setMobileNav(false)}/>}
-    <aside ref={navigation} className={`sidebar ${mobileNav ? 'mobile-open' : ''}`} inert={smallScreen && !mobileNav} aria-label="任务导航">
-      <a className="brand" href="/" aria-label="Morning 首页"><span className="brand-mark"><MorningMark size={48} reveal/></span><span>morning<span className="brand-period">.</span><small>你的个人工作空间</small></span></a>
-      <button className="compose-nav" disabled={!!pi && agentWorking} onClick={() => pi ? void sessionAction('new_session') : writeMessage()}><SquarePen size={16}/>{pi ? '新建会话' : '写消息'}<ChevronRight size={14}/></button>
-      <div className="nav-section-label">工作空间</div>
-      <button className={`nav-item ${view === 'chat' ? 'selected' : ''}`} aria-current={view === 'chat' ? 'page' : undefined}
-        onClick={() => {setView('chat'); setMobileNav(false)}}><MessageSquare size={17}/><span>Agent 对话</span></button>
-      {data?.platform_available && (['computer','watch','tasks','devices'] as const).map((page,index) => {const Icon=[Monitor,Eye,ListTodo,Laptop][index];return <button key={page} className={`nav-item ${view===page?'selected':''}`} aria-current={view===page?'page':undefined} onClick={()=>{setView(page);setMobileNav(false)}}><Icon size={17}/><span>{['Computer','Watch','Tasks','Devices'][index]}</span></button>})}
-      {!!pi && sessions.length>0 && <><div className="nav-section-label">最近会话</div>
-        <div className="session-nav">{sessions.slice(0, 5).map(session => <button key={session.id} className={session.id === pi.state?.sessionId ? 'selected' : ''} disabled={agentWorking} onClick={() => void sessionAction('switch_session', {sessionPath:session.path})} title={session.name || session.firstMessage}>{session.name || session.firstMessage || '未命名会话'}</button>)}</div></>}
-      <div className="nav-section-label watch-section-label"><span>后台驻守</span><span>{tasks.length}</span></div>
-      <div className="watch-nav">{tasks.map(t => <button key={t.task_id} onClick={() => {setSelectedId(t.task_id); setFollowing(true); setMobileNav(false); setView('chat')}} className={selected?.task_id === t.task_id ? 'selected' : ''}>
-        <span className={`nav-dot ${t.state}`}/><span>{t.label}</span>{t.state === 'approval' && <AlertCircle size={13}/>}</button>)}</div>
-      {!tasks.length && <div className="nav-empty"><Eye size={17}/><p>暂时没有驻守任务。<span>需要时，在对话中告诉 Morning。</span></p></div>}
-      <div className="sidebar-bottom">
-        <div className="sidebar-art" aria-hidden="true"><MorningMark size={148}/><span>每一天，都有新的可能。</span></div>
-        {workspaceName && <div className="workspace-label" title={data?.workspace || ''}><FolderOpen size={16}/><span><small>当前工作区</small>{workspaceName}</span></div>}
-        <button className={`nav-item settings-nav ${view === 'settings' ? 'selected' : ''}`} aria-current={view === 'settings' ? 'page' : undefined}
-          onClick={() => {setView('settings'); setMobileNav(false)}}><SettingsIcon size={17}/><span>设置</span></button>
-        <div className="sidebar-foot"><span className={`connection-dot ${error ? 'offline' : ''}`}/><span>{error ? '服务连接中断' : data ? '本地服务已连接' : '正在连接…'}</span></div>
-      </div>
-    </aside>
+    <button className={`nav-scrim ${mobileNav?'is-open':''}`} aria-label="关闭导航" aria-hidden={!mobileNav} inert={!mobileNav} onClick={()=>setMobileNav(false)}/>
+    <Sidebar navigationRef={navigation} expanded={sidebarExpanded} mobile={smallScreen} mobileOpen={mobileNav} view={view} platformAvailable={!!data?.platform_available} hasPi={!!pi} sessions={sessions} sessionId={pi?.state?.sessionId} tasks={tasks} selectedId={selected?.task_id} workspace={data?.workspace} busy={agentWorking} connected={!!data} error={error}
+      onNew={()=>pi?void sessionAction('new_session'):writeMessage()} onView={next=>{setView(next as typeof view);setMobileNav(false)}} onSession={session=>void sessionAction('switch_session',{sessionPath:session.path})} onWatch={task=>{setSelectedId(task.task_id);setFollowing(true);setMobileNav(false);setView('chat')}} onHistory={()=>{setNativePanel(true);setMobileNav(false)}}/>
     <main className="main-shell" inert={smallScreen && mobileNav}><header className="app-header">
-      <div className="header-heading"><button className="icon-button mobile-menu" aria-label="打开导航" aria-expanded={mobileNav} onClick={() => setMobileNav(true)}><Menu size={20}/></button>
-        <div><strong>{view !== 'chat' ? ({settings:'设置',computer:'Computer',watch:'Watch',tasks:'Tasks',devices:'Devices'} as const)[view] : <><span className="desktop-title">{pi?.state?.sessionName || '对话'}</span><span className="mobile-wordmark">morning<span>.</span></span></>}</strong><span>{view !== 'chat' ? ({settings:'让 Morning 适合你的习惯',computer:'观察 · 操作 · 核验',watch:'持续关注现实中的变化',tasks:'执行记录与后台通知',devices:'连接和授权你的工作环境'} as const)[view] : pi?.state?.model ? `${pi.state.model.name} · ${pi.state.thinkingLevel}` : 'Morning · 你的工作助手'}</span></div></div>
-      <StatusBar watch={pulseWatch} now={now+clockOffset} connectionError={error} notice={notice} onNoticeClose={() => setNotice(null)} mutate={mutate}
+      <div className="header-heading"><button className="icon-button sidebar-toggle" aria-label={sidebarExpanded?'收起侧栏':'展开侧栏'} title="切换侧栏 · ⌘B / Ctrl+B" aria-expanded={sidebarExpanded} onClick={()=>setSidebarExpanded(value=>!value)}>{sidebarExpanded?<PanelLeftClose size={18}/>:<PanelLeftOpen size={18}/>}</button><button className="icon-button mobile-menu" aria-label="打开导航" aria-expanded={mobileNav} onClick={() => setMobileNav(true)}><Menu size={20}/></button>
+        <div><strong>{view !== 'chat' ? ({settings:'设置',computer:'Computer',watch:'Watch',tasks:'Tasks',devices:'Devices'} as const)[view] : <><span className="desktop-title">{pi?.state?.sessionName || (dialogue.length?'工作会话':'新会话')}</span><span className="mobile-wordmark">morning<span>.</span></span></>}</strong><span>{view !== 'chat' ? ({settings:'让 Morning 适合你的习惯',computer:'观察 · 操作 · 核验',watch:'持续关注现实中的变化',tasks:'执行记录与后台通知',devices:'连接和授权你的工作环境'} as const)[view] : agentWorking ? '正在处理你的任务' : '会话自动保存'}</span></div></div>
+      <StatusBar watch={pulseWatch} watches={tasks} onSelectWatch={id=>setSelectedId(id)} now={now+clockOffset} connectionError={error} notice={notice} onNoticeClose={() => setNotice(null)} mutate={mutate}
         computerNotice={computerUrgent?{state:computerUrgent.state==='approval'?'approval':'attention',text:computerUrgent.goal,open:()=>setView('computer')}:undefined} orbHue={app.settings?.orb_hue ?? null} agentWorking={agentWorking} onReconnect={refresh}
         onRestart={() => writeMessage(pulseWatch?.configuration.spec.purpose || '')}
         onSettings={() => {if (pulseWatch) setSelectedId(pulseWatch.task_id); setSettings(true)}}/>
     </header>
       {error && <div className="connection-banner" role="status"><AlertCircle size={15}/><span>暂时无法连接本地服务，正在重试。</span><button onClick={refresh}><RotateCw size={13}/>重新连接</button></div>}
       {view === 'settings' ? <div className="conversation settings-scroll"><SettingsView settings={app.settings} save={app.save} error={app.error}
-        capabilities={<>{pi&&<section className="settings-group"><div className="section-heading"><div><h2>Pi 原生能力</h2><p className="settings-hint">模型提供商认证、上下文、Skills、Extensions、MCP 与工具。</p></div><button className="secondary-button" onClick={()=>setNativePanel(true)}>打开 Agent 工作空间<ChevronRight size={14}/></button></div></section>}{platform.data&&<PlatformModules data={platform.data} refresh={platform.refresh}/>}</>} state={data} tasks={tasks} onReady={() => {setView('chat'); refresh()}} onOpenWatch={id => {setSelectedId(id); setSettings(true)}}/></div> : view !== 'chat' ? <PlatformView page={view} data={platform.data} error={platform.error} refresh={platform.refresh} busyAgent={agentWorking} onSession={path=>void sessionAction('switch_session',{sessionPath:path})} onSettings={watch=>{setSelectedId(watch.task_id);setSettings(true)}} onAsk={text=>{setView('chat');setMessageBusy(true);void api('/pulse/chat',{message:text,...(agentWorking?{streamingBehavior:'followUp'}:{})}).then(()=>{refresh();platform.refresh()}).catch(e=>{setToast(e.message);setPrompt(text)}).finally(()=>setMessageBusy(false))}}/> : <>
+        capabilities={platform.data&&<PlatformModules data={platform.data} refresh={platform.refresh}/>} refreshAgent={refresh} onInsert={text=>writeMessage(text)} state={data} tasks={tasks} onReady={() => {setView('chat'); refresh()}} onOpenWatch={id => {setSelectedId(id); setSettings(true)}}/></div> : view !== 'chat' ? <PlatformView page={view} data={platform.data} error={platform.error} refresh={platform.refresh} busyAgent={agentWorking} onSession={path=>void sessionAction('switch_session',{sessionPath:path})} onSettings={watch=>{setSelectedId(watch.task_id);setSettings(true)}} onAsk={text=>{setView('chat');setMessageBusy(true);void api('/pulse/chat',{message:text,...(agentWorking?{streamingBehavior:'followUp'}:{})}).then(()=>{refresh();platform.refresh()}).catch(e=>{setToast(e.message);setPrompt(text)}).finally(()=>setMessageBusy(false))}}/> : <>
       <div className="conversation" ref={conversation} onScroll={e => {const el=e.currentTarget; setFollowing(el.scrollHeight - el.scrollTop - el.clientHeight < 70)}}>
         {dialogue.length === 0 ? <div className="empty-state"><div className="welcome-art"><MorningMark size={290} reveal interactive label="重播分层日出 Logo"/></div>
           <div className="eyebrow">A NEW DAY WITH MORNING</div><h1>从一句话开始。</h1><p>把想法交给 Morning，<br/>一起把下一步做好。</p>
@@ -288,10 +247,11 @@ export default function App() {
         {pi && Object.values(pi.statuses || {}).some(Boolean) && <div className="pi-extension-status" role="status">{Object.values(pi.statuses).filter(Boolean).join(' · ')}</div>}
         {!following && <button className="jump-latest" onClick={() => {setFollowing(true); conversation.current?.scrollTo({top: conversation.current.scrollHeight, behavior: 'smooth'})}}><ArrowDown size={14}/>回到最新</button>}
         <form className={`composer${agentWorking ? ' is-working' : ''}`} onSubmit={e => void onCompose(e)}>
+          {commands.menu}
           {!!images.length && <div className="composer-images">{images.map((image, index) => <span key={index}><img src={`data:${image.mimeType};base64,${image.data}`} alt={`附件 ${index + 1}`}/><button type="button" className="icon-button" aria-label={`移除附件 ${index + 1}`} onClick={() => setImages(images.filter((_, i) => i !== index))}><X size={13}/></button></span>)}</div>}
-          <textarea ref={composer} rows={1} aria-label="给 Agent 的消息" value={prompt} onChange={e => setPrompt(e.target.value)}
-            onKeyDown={e => {if(e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {e.preventDefault(); void onCompose(e)}}} placeholder="告诉 Morning，你想完成什么…"/>
-          <div className="composer-actions"><span className="composer-identity"><MorningMark size={28} active={agentWorking}/><strong>Morning</strong><span>{agentWorking ? '正在处理' : 'Agent'}</span></span>
+          <textarea ref={composer} rows={1} aria-label="给 Agent 的消息" value={prompt} onChange={e => {setPrompt(e.target.value);commands.trackCaret()}} onSelect={commands.trackCaret} {...(pi?commands.inputProps:{})}
+            onKeyDown={e => {if(commands.keyDown(e))return;if(e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {e.preventDefault(); void onCompose(e)}}} placeholder="告诉 Morning，你想做什么… /"/>
+          <div className="composer-actions">{pi?<ModelPicker pi={pi} busy={agentWorking||thinking.changing} refresh={refresh} thinking={thinking}/>:<span className="composer-identity"><MorningMark size={28} active={agentWorking}/><strong>Morning</strong><span>{agentWorking?'正在处理':'Agent'}</span></span>}
             {pi && <div className="composer-native-actions"><input ref={attachment} type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden onChange={e => {
               const files = Array.from(e.target.files || []); e.target.value = ''
               if (files.reduce((sum, file) => sum + file.size, 0) > 10 * 1024 * 1024) {setToast('单条消息的图片总大小请保持在 10 MB 以内。'); return}
@@ -300,7 +260,7 @@ export default function App() {
               <button type="button" className="icon-button" aria-label="模型与 Agent 设置" onClick={() => setNativePanel(true)}><SlidersHorizontal size={16}/></button>
               {agentWorking && <><select aria-label="处理中发送方式" value={queueMode} onChange={e => setQueueMode(e.target.value as 'steer' | 'followUp')}><option value="steer">补充指令</option><option value="followUp">完成后再做</option></select><button type="button" className="stop-button" aria-label="停止 Agent" onClick={() => void stop()}><Square size={13} fill="currentColor"/></button></>}
             </div>}
-            <button className="send-button" disabled={(!prompt.trim() && !images.length) || messageBusy || (agentWorking && !pi)} aria-label="发送消息"><ArrowUp size={18}/></button></div>
+            <button className="send-button" disabled={(!prompt.trim() && !images.length) || messageBusy || thinking.changing || (agentWorking && !pi)} aria-label="发送消息"><ArrowUp size={18}/></button></div>
         </form>
         <div className="composer-foot"><span>{pi ? <><Check size={12}/>{pi.state?.pendingMessageCount ? `${pi.state.pendingMessageCount} 条消息等待处理` : pi.agent_ready ? 'Pi 原生会话 · 自动保存' : 'Pi 已就绪'}</> : data?.understanding_available ? <><Check size={12}/>由你决定下一步</> : '任务理解模型尚未连接'}</span><span>Enter 发送 <i>·</i> Shift + Enter 换行</span></div>
       </footer>

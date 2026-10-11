@@ -5,8 +5,9 @@
    data-testid="pulse" and data-state are preserved for existing tests.
 */
 import { useEffect, useRef, useState } from 'react'
-import { ArrowUpRight, Check, ChevronDown, ChevronUp, Globe, LogIn, Pause, Play, RotateCw, Settings2, ShieldCheck } from 'lucide-react'
+import { ArrowUpRight, Check, ChevronDown, ChevronUp, Globe, LogIn, Pause, Play, RotateCw, Settings2, ShieldCheck, X, Activity } from 'lucide-react'
 import type { Approval, Watch } from './types'
+import {Disclosure, gsap, useGSAP, useReducedMotion} from './Motion'
 
 const stateNames: Record<string, string> = {
   watching: '驻守中', working: '正在处理', approval: '等待批准',
@@ -16,12 +17,12 @@ const stateNames: Record<string, string> = {
 }
 
 function age(at: string | null, now: number) {
-  if (!at) return '等待首次确认'
+  if (!at || !Number.isFinite(Date.parse(at))) return '等待首次确认'
   const s = Math.max(0, Math.floor((now - Date.parse(at)) / 1000))
   if (s < 5) return '刚刚'
-  if (s < 60) return `${s}s`
-  if (s < 3600) return `${Math.floor(s / 60)}m`
-  return `${Math.floor(s / 3600)}h`
+  if (s < 60) return `${s} 秒前`
+  if (s < 3600) return `${Math.floor(s / 60)} 分钟前`
+  return `${Math.floor(s / 3600)} 小时前`
 }
 
 function host(url: string) { try { return new URL(url).hostname } catch { return '网页' } }
@@ -32,6 +33,8 @@ function current(watch: Watch) { return value(Object.values(watch.records)[0]?.[
 
 interface StatusBarProps {
   watch: Watch | null
+  watches?: Watch[]
+  onSelectWatch?: (id:string) => void
   now: number
   connectionError: string
   notice: { id: string; text: string } | null
@@ -46,21 +49,21 @@ interface StatusBarProps {
   computerNotice?: {state:string; text:string; open:()=>void}
 }
 
-export function StatusBar({ watch, now, connectionError, notice, onSettings, onRestart, mutate, onNoticeClose, orbHue, agentWorking, onReconnect, computerNotice }: StatusBarProps) {
+export function StatusBar({ watch, now, connectionError, notice, onSettings, onRestart, mutate, onNoticeClose, orbHue, agentWorking, onReconnect, computerNotice, watches = [], onSelectWatch }: StatusBarProps) {
   const [open, setOpen] = useState(false)
   const [hover, setHover] = useState(false)
   const [busy, setBusy] = useState(false)
   const [login, setLogin] = useState(false)
   const barRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    const outside = (event: PointerEvent) => {if (!barRef.current?.contains(event.target as Node)) setOpen(false)}
-    const escape = (event: KeyboardEvent) => {if (event.key === 'Escape') setOpen(false)}
-    document.addEventListener('pointerdown', outside); document.addEventListener('keydown', escape)
-    return () => {document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape)}
-  }, [open])
+  const panelRef = useRef<HTMLDivElement>(null)
+  const panelContent = useRef<HTMLDivElement>(null)
+  const panelTween = useRef<ReturnType<typeof gsap.timeline>|null>(null)
+  const [bodyVisible,setBodyVisible] = useState(false)
+  const [dismissed,setDismissed] = useState('')
+  const reduced = useReducedMotion()
 
-  useEffect(() => { setOpen(false); setLogin(false) }, [watch?.task_id])
+
+  useEffect(() => { setLogin(false) }, [watch?.task_id])
   useEffect(() => {
     if (watch?.session_state === 'human_login' || watch?.session_state === 'opening') setLogin(true)
     else if (watch?.session_state === 'closed' || watch?.session_state === 'login_window_failed') setLogin(false)
@@ -70,9 +73,47 @@ export function StatusBar({ watch, now, connectionError, notice, onSettings, onR
   const rawState = connectionError ? 'offline' : computer?.state || watch?.state || (agentWorking ? 'working' : 'empty')
   const urgent = ['approval', 'attention', 'offline'].includes(rawState)
   const transient = notice && !['completed', 'cancelled', 'expired', 'paused', 'reconnecting', 'deferred'].includes(rawState)
-  const expanded = open || urgent || !!(watch && (transient || rawState === 'working'))
+  const expansionKey = [rawState,watch?.pending_approvals[0]?.approval_id,computer?.text,notice?.id].join(':')
+  const expanded = open || dismissed !== expansionKey && (urgent || !!(watch && (transient || rawState === 'working')))
+  const shown = expanded || bodyVisible
+  const hide = (restore=false) => {setOpen(false);setDismissed(expansionKey);if(restore)requestAnimationFrame(()=>barRef.current?.querySelector<HTMLButtonElement>('.status-bar-pill')?.focus())}
+  const activeCount = watches.filter(item=>['watching','working'].includes(item.state)).length
+  const activityCount = watches.length + (computer ? 1 : 0) + (agentWorking ? 1 : 0)
+  useEffect(()=>{if(expanded)setBodyVisible(true)},[expanded])
+  useGSAP(()=>{
+    const panel=panelRef.current,content=panelContent.current,pill=barRef.current?.querySelector<HTMLElement>('.status-bar-pill')
+    if(!panel||!content||!pill)return
+    panelTween.current?.kill()
+    const width=Math.min(304,innerWidth-28),compact=pill.getBoundingClientRect()
+    gsap.set(content,{width:width-2})
+    const timeline=gsap.timeline()
+    panelTween.current=timeline
+    if(expanded){
+      if(!bodyVisible)gsap.set(panel,{width:compact.width,height:compact.height,y:-compact.height-11,scale:1,autoAlpha:1,borderRadius:11,overflow:'hidden'})
+      timeline.to(panel,{width,height:content.scrollHeight+2,y:0,autoAlpha:1,scale:1,borderRadius:17,duration:reduced?0:.36,ease:'power4.inOut',overwrite:true},0)
+        .fromTo(content,{opacity:bodyVisible?Number(gsap.getProperty(content,'opacity')):0,y:bodyVisible?0:8},{opacity:1,y:0,duration:reduced?0:.24,ease:'power3.out'},reduced?0:.12)
+        .set(panel,{height:'auto',overflow:'auto'})
+    }else{
+      gsap.set(panel,{height:panel.getBoundingClientRect().height,overflow:'hidden'})
+      timeline.to(content,{opacity:0,y:-4,duration:reduced?0:.1},0)
+        .to(panel,{width:compact.width,height:compact.height,y:-compact.height-11,borderRadius:11,duration:reduced?0:.36,ease:'power4.inOut'},0)
+        .to(panel,{autoAlpha:0,duration:reduced?0:.1,onComplete:()=>setBodyVisible(false)},reduced?0:.28)
+    }
+  },{scope:panelRef,dependencies:[expanded,shown,reduced]})
   const approval = watch?.pending_approvals[0] as Approval | undefined
   const expired = approval && Date.parse(approval.expires_at) <= now
+  useEffect(()=>{
+    if(!expanded)return
+    const resize=()=>{const width=Math.min(304,innerWidth-28);panelTween.current?.kill();if(panelRef.current&&panelContent.current){gsap.set(panelRef.current,{width,height:'auto',y:0,autoAlpha:1,borderRadius:17,overflow:'auto'});gsap.set(panelContent.current,{width:width-2,opacity:1,y:0})}}
+    window.addEventListener('resize',resize);return()=>window.removeEventListener('resize',resize)
+  },[expanded])
+  useEffect(() => {
+    if (!expanded) return
+    const outside = (event:PointerEvent) => {if(!barRef.current?.contains(event.target as Node))hide()}
+    const escape = (event:KeyboardEvent) => {if(event.key==='Escape'&&!document.querySelector('[role="dialog"][aria-modal="true"]')){hide();barRef.current?.querySelector<HTMLButtonElement>('.status-bar-pill')?.focus()}}
+    document.addEventListener('pointerdown',outside);document.addEventListener('keydown',escape)
+    return()=>{document.removeEventListener('pointerdown',outside);document.removeEventListener('keydown',escape)}
+  },[expanded,expansionKey])
 
   const act = async (path: string, body: unknown) => {
     setBusy(true)
@@ -102,18 +143,19 @@ export function StatusBar({ watch, now, connectionError, notice, onSettings, onR
         {/* ── collapsed pill ── */}
         <button
           className="status-bar-pill"
-          onClick={() => { setOpen(!open); if (notice) onNoticeClose() }}
+          onClick={() => {if(expanded)hide();else setOpen(true);if(notice)onNoticeClose()}}
           onMouseEnter={() => setHover(true)}
           onMouseLeave={() => setHover(false)}
           onFocus={() => setHover(true)}
           onBlur={() => setHover(false)}
           aria-label={`Pulse：${summary}，点击查看详情`}
           aria-expanded={expanded}
-          aria-controls={expanded ? 'status-bar-body' : undefined}
+          aria-controls={expanded ? 'pulse-panel' : undefined}
         >
-          <span className="pulse-dot" style={orbHue == null ? undefined : {backgroundColor: `hsl(${orbHue} 50% 42%)`}}/>
-          <span className="pulse-word">Pulse</span><span className="pulse-divider"/>
-          <span className="status-bar-summary">{summary}</span>
+          <span className={`pulse-orbit ${agentWorking||activeCount>0?'is-live':''}`} aria-hidden="true" style={orbHue==null?undefined:{color:`hsl(${orbHue} 50% 42%)`}}><i/><i/><i/><b/></span>
+          <span className="pulse-word">Pulse</span>
+          {urgent?<span className="pulse-needs-you">需要你</span>:<span className="pulse-activity-count">{activityCount||'·'}</span>}
+          <span className="sr-only">{summary}</span>
           {(
             <span className="status-bar-chevron" aria-hidden="true">
               {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
@@ -121,14 +163,20 @@ export function StatusBar({ watch, now, connectionError, notice, onSettings, onR
           )}
         </button>
 
-        {/* ── expanded body ── */}
-        {expanded && computer && <div id="status-bar-body" className="status-bar-body" role="region" aria-label="电脑状态"><div className="sb-title">{computer.state==='approval'?'电脑操作等待你确认':'电脑操作需要查看'}</div><p className="sb-copy">{computer.text}</p><div className="sb-actions"><button onClick={()=>{computer.open();setOpen(false)}}>查看操作<ArrowUpRight size={13}/></button></div></div>}
-        {expanded && !computer && !watch && <div id="status-bar-body" className="status-bar-body" role="region" aria-label="Pulse 详情">
+        {/* One shared activity surface; details retain their existing backend actions. */}
+        {shown && <div ref={panelRef} id="pulse-panel" className="pulse-panel" inert={!expanded} aria-hidden={!expanded} style={{opacity:0,visibility:'hidden',transformOrigin:'top right'}}>
+          <div ref={panelContent} className="pulse-panel-content">
+          <header className="pulse-panel-heading"><span className="pulse-panel-emblem"><Activity size={16}/></span><div><strong>后台活动</strong><span>{watches.length?`${watches.length} 项驻守 · ${activeCount} 项运行中`:'随时准备响应变化'}</span></div><button className="icon-button" aria-label="收起后台活动" onClick={()=>hide(true)}><X size={14}/></button></header>
+          {agentWorking&&<a className="pulse-agent-activity" href="#chat" onClick={()=>hide()}><span className="activity-running-dot"/><span>Agent 正在处理<small>查看对话中的执行过程</small></span><ArrowUpRight size={13}/></a>}
+          {watches.length>1&&<div className="pulse-watch-switcher" aria-label="选择驻守">{watches.map(item=><button key={item.task_id} className={item.task_id===watch?.task_id?'selected':''} onClick={()=>onSelectWatch?.(item.task_id)}><span className={`nav-dot ${item.state}`}/><span>{item.label}</span><small>{stateNames[item.state]||item.state}</small></button>)}</div>}
+
+        {shown && computer && <div id="status-bar-body" className="status-bar-body" role="region" aria-label="电脑状态"><div className="sb-title">{computer.state==='approval'?'电脑操作等待你确认':'电脑操作需要查看'}</div><p className="sb-copy">{computer.text}</p><div className="sb-actions"><button onClick={()=>{computer.open();hide()}}>查看操作<ArrowUpRight size={13}/></button></div></div>}
+        {shown && !computer && !watch && <div id="status-bar-body" className="status-bar-body" role="region" aria-label="Pulse 详情">
           <div className="sb-title">{connectionError ? '本地服务连接中断' : agentWorking ? '正在处理你的消息' : '与外界保持连接'}</div>
           <p className="sb-copy">{connectionError ? '当前显示的是已保存的记录。恢复连接后，状态会自动更新。' : agentWorking ? '执行进度会出现在对话中。' : '需要持续关注变化时，直接在对话中告诉 Morning。驻守状态会集中出现在这里。'}</p>
           {connectionError && <div className="sb-actions"><button onClick={onReconnect}><RotateCw size={13}/>重新连接</button></div>}
         </div>}
-        {expanded && !computer && watch && (
+        {shown && !computer && watch && (
           <div id="status-bar-body" className="status-bar-body" role="region" aria-label="驻守详情">
             {rawState === 'approval' && approval ? (
               <>
@@ -219,19 +267,21 @@ export function StatusBar({ watch, now, connectionError, notice, onSettings, onR
             ) : (
               <>
                 <div className="sb-task-heading">
-                  <Globe size={13} /><span>{watch.label}</span><span className="sb-kind">{(watch.kind || 'web').toUpperCase()}</span>
+                  <span className="sb-source-mark"><Globe size={16}/></span><span>{watch.label}<small>{stateNames[watch.state]||watch.state}</small></span><span className="sb-kind">{({web:'网页',http:'API',file:'文件',folder:'文件夹',log:'日志',process:'进程',service:'服务',desktop:'应用',screen:'屏幕'} as Record<string,string>)[watch.kind||'web']||'来源'}</span>
                 </div>
                 {watch.state === 'deferred' && <p className="sb-copy">{watch.attention}</p>}
                 <dl className="sb-facts">
-                  <div><dt>当前</dt><dd>{watch.stale ? '上次记录 · ' : ''}{watch.field_label} {current(watch)}</dd></div>
+                  <div><dt>当前</dt><dd className="sb-reading"><strong>{current(watch)}</strong><small>{watch.stale?'上次记录 · ':''}{watch.field_label}</small></dd></div>
                   <div><dt>等待</dt><dd>{watch.condition_label}</dd></div>
+                </dl>
+                <Disclosure className="pulse-source-details" title="来源与确认" hint={age(watch.last_confirmed_at,now)}><dl className="sb-facts sb-metadata">
                   <div><dt>来源</dt><dd>{watch.url ? <a href={watch.url || '#watch/'+watch.task_id} target={watch.url ? '_blank' : undefined} rel="noreferrer">{host(watch.url)}<ArrowUpRight size={11} /></a> : <a href={'#watch/'+watch.task_id}>查看驻守来源<ArrowUpRight size={11}/></a>}</dd></div>
                   <div>
                     <dt>连接</dt>
                     <dd>
                       {watch.session_state === 'human_login' ? '等待你完成登录'
                         : watch.state === 'reconnecting' ? '正在重试'
-                        : watch.source.health === 'HEALTHY' ? '读取正常'
+                        : watch.source.health === 'HEALTHY' ? (watch.stale?'上次读取正常':'读取正常')
                         : watch.attention || stateNames[watch.state]}
                     </dd>
                   </div>
@@ -239,7 +289,8 @@ export function StatusBar({ watch, now, connectionError, notice, onSettings, onR
                     <dt>上次确认</dt>
                     <dd>{age(watch.last_confirmed_at, now)}{watch.stale && <span className="sb-stale">历史记录</span>}</dd>
                   </div>
-                </dl>
+
+                </dl></Disclosure>
                 {watch.approval_expired && <p className="sb-inline-error">有一项操作审批已到期，尚未执行。</p>}
                 <div className="sb-actions">
                   <button disabled={busy || watch.lifecycle !== 'ACTIVE'} onClick={() => void act(`/tasks/${watch.task_id}/check`, {})}>
@@ -258,6 +309,9 @@ export function StatusBar({ watch, now, connectionError, notice, onSettings, onR
             )}
           </div>
         )}
+          <footer className="pulse-panel-footer"><a href="#watch" onClick={()=>hide()}>管理驻守<ArrowUpRight size={11}/></a><a href="#tasks" onClick={()=>hide()}>执行记录<ArrowUpRight size={11}/></a></footer>
+          </div>
+        </div>}
       </div>
 
       {/* Live region for screen readers */}

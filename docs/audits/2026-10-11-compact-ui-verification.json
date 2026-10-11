@@ -1,0 +1,187 @@
+{
+  "date": "2026-10-11",
+  "scope": "Morning 紧凑交互、Pi 原生设置与长时间运行修复；不是整个 Agent 平台的最终验收。",
+  "design": {
+    "direction": "暖白与柔光；控件本体伸缩，复杂度按需展开。",
+    "user_correction": "移除大型思考弹框；压缩全局面板；加强收敛动效。",
+    "score": {
+      "baseline_total": 59.1,
+      "category_changes": {
+        "color_harmony": 1.5,
+        "component_polish": 3.2,
+        "consistency": 2.6,
+        "responsive_robustness": 1.8,
+        "spacing_layout": 4.0,
+        "typography": 1.5,
+        "usability_accessibility": 2.2,
+        "visual_hierarchy": 3.4
+      },
+      "current_total": 85.7,
+      "overall_change": 26.6
+    },
+    "score_note": "主观渲染复核，不等同于用户审美验收。最后一轮在已选方向下达到 85.7；较基线 +26.6。",
+    "viewports": [
+      "1440×900",
+      "390×844",
+      "实际浏览器 1280×720"
+    ],
+    "modes": [
+      "浅色",
+      "深色",
+      "减少动态效果",
+      "键盘导航"
+    ],
+    "remaining_visual": "辅助说明字号仍偏小；复杂审批和异常详情未逐一重做视觉。"
+  },
+  "changes": [
+    {
+      "scenario": "在对话中调整思考深度",
+      "files": [
+        "apps/pulse/src/ThinkingControl.tsx",
+        "apps/pulse/src/ComposerCommands.tsx",
+        "apps/pulse/src/thinking.css",
+        "apps/pulse/src/App.tsx"
+      ],
+      "implemented": [
+        "小胶囊原地横向延展；松手只保存一次并弹回；取消手势不保存。",
+        "同一个 Pi 状态支持拖动、点按、方向键、Home/End 和 / 快捷选择。",
+        "模型支持的档位从 get_available_thinking_levels 读取，不硬编码可用档位。",
+        "/ 菜单读取原生 Skills、提示词和扩展命令；同名原生命令优先，GUI 使用无冲突名称。",
+        "保存失败保留草稿和原生值；模型不支持时不显示伪选项。",
+        "/ 思考选择是单行横向档位，不再展开纵向大面板；支持左右键。"
+      ],
+      "native_preserved": "set_thinking_level / get_state 原生 RPC；UI 不另建思考设置；/ 选择本身不触发模型生成。",
+      "validation": [
+        "真实 Pi 进程：拖动期间零写入、松手单次写入、会话刷新保持。",
+        "原生 /ui-check 扩展确实进入原生交互；名称冲突和非推理模型回归。",
+        "错误注入只用于失败分支，成功路径均为实际 SDK。"
+      ]
+    },
+    {
+      "scenario": "配置 Pi 行为与工作区继承",
+      "files": [
+        "apps/agent-runtime/native-preferences.mjs",
+        "apps/agent-runtime/native-bootstrap.mjs",
+        "apps/pulse/src/NativePreferences.tsx",
+        "apps/pulse/src/Settings.tsx",
+        "packages/wakecore/src/wakecore/app/pulse/server.py"
+      ],
+      "implemented": [
+        "35 项原生字段：队列、上下文、重试、传输、图片、工具、资源路径、信任、思考预算。",
+        "用户/工作区范围、继承重置、冲突版本、草稿保留、设置搜索、信任授权和撤销。",
+        "新会话默认思考支持 Pi 的完整 off/minimal/low/medium/high/xhigh/max 枚举；不影响当前会话。",
+        "紧凑分组行与高级折叠，保存反馈和可恢复错误。"
+      ],
+      "native_preserved": "写入 Pi SettingsManager / FileSettingsStorage 的原生 settings.json；保留未知字段，复用原生锁、资源加载器和 ProjectTrustStore。",
+      "validation": [
+        "真实 native 测试 6 项通过：不启动 Agent 的只读加载、继承、冲突、重启恢复、Skill 目录增删与撤销信任。",
+        "真实 GUI 保存/重置/搜索和移动端检查。"
+      ],
+      "remaining": "35 项不是 Pi 所有设置的穷举；损坏的原生配置仍需文件级修复；模型专用覆盖暂以只读原生值展示。"
+    },
+    {
+      "scenario": "主界面保持紧凑，动作结束后收回",
+      "files": [
+        "apps/pulse/src/Sidebar.tsx",
+        "apps/pulse/src/ModelPicker.tsx",
+        "apps/pulse/src/StatusBar.tsx",
+        "apps/pulse/src/Motion.tsx",
+        "apps/pulse/src/workspace.css",
+        "apps/pulse/src/Platform.tsx",
+        "apps/pulse/src/Dialog.tsx"
+      ],
+      "implemented": [
+        "64px 默认侧栏 / 212px 展开，持久化、快捷键和可中断动画。",
+        "296px 模型菜单、304px Pulse；收起时缩回触发控件。",
+        "Pulse 来源和连接确认按需展开；Watch 列表的暂停/继续接真实后端。",
+        "设置由纵向大卡片改为分类与紧凑可折叠行；保持已有操作。"
+      ],
+      "validation": [
+        "81 项全量界面回归通过；后续设置密度、模型动画中断和命令冲突追加针对性回归。",
+        "真实浏览器观察当前会话、模型菜单、Pulse、设置；深浅色和两档视口检查。"
+      ]
+    },
+    {
+      "scenario": "多标签持续连接后服务仍能工作",
+      "files": [
+        "packages/wakecore/src/wakecore/adapters/sqlite_dev/store.py",
+        "tests/unit/test_sqlite_connection_lifecycle.py"
+      ],
+      "implemented": [
+        "文件 SQLite 事务和迁移结束后释放连接，初始化/BEGIN/回滚异常也清理；内存库保留必要连接。"
+      ],
+      "validation": [
+        "实际定位约 61447 个进程文件描述符，主要为已结束请求线程遗留数据库句柄。",
+        "真实 SQLite 120 个短生命周期请求线程全部释放；锁冲突后线程可重用、回滚、嵌套拒绝、内存库回归。",
+        "修复后重启及持续连接数分钟仍为 18 个描述符；会话、模型、思考档位、消息数与 Watch 状态逐项对照一致。未将此视为数小时耐久测试。"
+      ]
+    }
+  ],
+  "verification": {
+    "backend": {
+      "command": "uv run pytest tests --ignore=tests/ui -q",
+      "passed": 773,
+      "skipped": 9
+    },
+    "frontend": {
+      "command": "uv run pytest tests/ui -q",
+      "passed": 81
+    },
+    "node": {
+      "command": "npm --prefix apps/agent-runtime test",
+      "passed": 11
+    },
+    "build": "npm --prefix apps/pulse run build passed; existing >500 kB JS chunk warning remains",
+    "lint": "Ruff and git diff --check passed",
+    "gateway_live": {
+      "gateway": "https://pixelstarrysky.xyz",
+      "model": "gpt-5.6-sol",
+      "protocol": "openai-responses",
+      "custom_modules": false,
+      "invalid_credentials": "authentication",
+      "generation": {
+        "state": "succeeded",
+        "latency_ms": 1490
+      },
+      "tools": [
+        "read",
+        "write"
+      ],
+      "artifact_verified": true,
+      "restart": {
+        "same_session": true,
+        "message_count": 7,
+        "configuration_applied": true
+      },
+      "secret_not_in_public_or_history": true,
+      "credential_removal": true,
+      "ok": true
+    },
+    "post_restart_current_state": "Exact match for current session, model, thinking level, dialogue count and watch lifecycle/version."
+  },
+  "reproduce": [
+    "npm --prefix apps/pulse run build",
+    "uv run pytest tests/unit/test_native_preferences.py tests/unit/test_sqlite_connection_lifecycle.py -q",
+    "uv run pytest tests/ui/test_native_frontend.py tests/ui/test_platform_frontend.py -q",
+    "npm --prefix apps/agent-runtime test",
+    "uv run python scripts/verify_gateway_lifecycle.py --output /tmp/gateway-proof.json"
+  ],
+  "integration_sources": [
+    {
+      "name": "Pi settings",
+      "url": "https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/settings.md",
+      "integration": "installed @earendil-works/pi-coding-agent 0.99.1; no new Agent core"
+    },
+    {
+      "name": "GSAP React lifecycle",
+      "url": "https://gsap.com/resources/React/",
+      "integration": "GSAP 3.15.0 / @gsap/react 2.1.2; scoped lifecycle and reduced motion"
+    }
+  ],
+  "acceptance_boundary": [
+    "未宣称 Pi 所有设置、Computer Use 和 Watch 的深度建设全部完成。",
+    "真实 Gateway 验证包括生成、read/write 工具、重启和凭据移除；不仅是模型列表。",
+    "测试使用隔离的原生会话；不把 UI/Mock 视为能力验收。",
+    "本次仅本地提交，不代表已推送远端。"
+  ]
+}

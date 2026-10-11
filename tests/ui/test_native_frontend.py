@@ -48,7 +48,7 @@ def assert_accessible(page):
 
 
 @pytest.fixture
-def native_ui(tmp_path):
+def native_ui(tmp_path, request):
     state, workspace, agent = tmp_path / "state", tmp_path / "workspace", tmp_path / "agent"
     workspace.mkdir()
     extensions = agent / "extensions"
@@ -73,12 +73,19 @@ def native_ui(tmp_path):
     try:
         with sync_playwright() as pw:
             browser = pw.chromium.launch(headless=True)
-            page = browser.new_page(viewport={"width": 1440, "height": 900}, reduced_motion="reduce")
+            page = browser.new_page(viewport={"width": 1440, "height": 900}, reduced_motion="reduce",
+                **({"record_video_dir": str(tmp_path / "video"), "record_video_size": {"width": 1440, "height": 900}} if request.node.name in {"test_model_motion_frames_and_native_selection", "test_thinking_drag_slash_and_native_commands"} else {}))
             errors = []
             page.on("pageerror", lambda error: errors.append(str(error)))
             page.goto(f"http://127.0.0.1:{http.server_port}")
             expect(page.get_by_text("从一句话开始。", exact=True)).to_be_visible()
             yield page, host, store, errors
+            if page.video:
+                video = page.video
+                page.close()
+                target = Path('/tmp/morning-design-depth') / ('thinking-motion.webm' if request.node.name == 'test_thinking_drag_slash_and_native_commands' else 'model-motion.webm')
+                target.parent.mkdir(parents=True, exist_ok=True)
+                video.save_as(str(target))
             browser.close()
     finally:
         http.shutdown()
@@ -202,7 +209,7 @@ def test_native_commands_dialogs_models_and_context_are_accessible(native_ui, tm
     expect(command).to_be_visible()
     assert_accessible(page)
     command.click()
-    expect(page.get_by_role("textbox", name="给 Agent 的消息", exact=True)).to_have_value("/ui-check ")
+    expect(page.get_by_role("combobox", name="给 Agent 的消息", exact=True)).to_have_value("/ui-check ")
     page.get_by_role("button", name="发送消息", exact=True).click()
     select = page.get_by_role("dialog", name="Native select", exact=True)
     expect(select).to_be_visible()
@@ -221,4 +228,308 @@ def test_native_commands_dialogs_models_and_context_are_accessible(native_ui, tm
     page.set_viewport_size({"width": 390, "height": 844})
     assert_accessible(page)
     page.screenshot(path=str(tmp_path / "native-model-mobile.png"))
+    assert not errors
+
+
+def test_native_settings_categories_search_save_scope_and_persistence(native_ui):
+    page, host, _, errors = native_ui
+    page.get_by_role("button", name="设置", exact=True).click()
+    page.get_by_role("tab", name="Agent 行为", exact=True).click()
+    field = page.get_by_label("补充指令的处理方式", exact=True)
+    expect(field).to_be_visible()
+    field.select_option("all")
+    # Drafts remain available when navigating to another settings category.
+    page.get_by_role("tab", name="外观", exact=True).click()
+    page.get_by_role("button", name="保存更改", exact=True).click()
+    expect(page.get_by_role("button", name="保存更改", exact=True)).to_be_hidden()
+    import json
+    stored = Path(host.agent_dir) / "settings.json"
+    assert json.loads(stored.read_text())["steeringMode"] == "all"
+    page.get_by_role("searchbox", name="搜索设置", exact=True).fill("预留上下文空间")
+    page.get_by_role("button", name="预留上下文空间", exact=False).click()
+    expect(page.get_by_label("预留上下文空间", exact=True)).to_be_visible()
+    page.get_by_label("预留上下文空间", exact=True).fill("8192")
+    page.get_by_role("button", name="保存更改", exact=True).click()
+    expect(page.get_by_role("button", name="保存更改", exact=True)).to_be_hidden()
+    assert json.loads(stored.read_text())["compaction"]["reserveTokens"] == 8192
+    page.reload()
+    page.get_by_role("button", name="上下文策略", exact=True).click()
+    expect(page.get_by_label("预留上下文空间", exact=True)).to_have_value("8192")
+    assert_accessible(page)
+    page.get_by_role("button", name="预留上下文空间：恢复继承", exact=True).click()
+    page.get_by_role("button", name="保存更改", exact=True).click()
+    expect(page.get_by_role("button", name="保存更改", exact=True)).to_be_hidden()
+    assert "reserveTokens" not in json.loads(stored.read_text())["compaction"]
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.get_by_role("combobox", name="设置分类", exact=True).select_option("agent")
+    expect(page.get_by_label("补充指令的处理方式", exact=True)).to_have_value("all")
+    assert_accessible(page)
+    assert not errors
+
+
+def test_composer_model_picker_switches_real_pi_model_and_thinking(native_ui):
+    import re
+    page, host, store, errors = native_ui
+    for name, model in [("First connection", "first-model"), ("Second connection", "second-model")]:
+        store.save({"name": name, "base_url": "http://127.0.0.1:1/v1", "api": "openai-responses", "model": model,
+                    "model_options": {"reasoning": True, "input": ["text", "image"]}, "api_key": "model-menu-fixture-key"})
+    host.update_gateways()
+    host.control("start_agent")
+    page.reload()
+    picker = page.get_by_role("button", name=re.compile(r"^选择模型，当前 first-model"))
+    expect(picker).to_be_visible()
+    picker.click()
+    dialog = page.get_by_role("dialog", name="选择模型", exact=True)
+    expect(dialog).to_be_visible()
+    dialog.get_by_role("combobox", name="搜索模型", exact=True).fill("second")
+    option = dialog.get_by_role("option", name=re.compile("second-model"))
+    expect(option).to_be_visible()
+    assert_accessible(page)
+    option.click()
+    expect(dialog).to_be_hidden()
+    expect(page.get_by_role("button", name=re.compile(r"^选择模型，当前 second-model"))).to_be_visible()
+    assert host.rpc("get_state")["model"]["id"] == "second-model"
+    composer = page.get_by_role("combobox", name="给 Agent 的消息", exact=True)
+    composer.fill('/think medium')
+    expect(page.get_by_role("option", name="均衡 中等推理强度", exact=True)).to_have_attribute("aria-disabled", "false")
+    composer.press('Enter')
+    expect(composer).to_have_value('')
+    expect(page.get_by_role("slider", name="思考深度", exact=True)).to_have_attribute("aria-valuetext", "均衡")
+    assert host.rpc("get_state")["thinkingLevel"] == "medium"
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.get_by_role("button", name=re.compile(r"^选择模型，当前")).click()
+    expect(dialog).to_be_visible()
+    assert_accessible(page)
+    dialog.get_by_role("combobox", name="搜索模型", exact=True).press("Escape")
+    expect(dialog).to_be_hidden()
+    assert not errors
+
+
+def test_sidebar_collapse_is_persistent_keyboard_accessible_and_interruptible(native_ui):
+    page, _, _, errors = native_ui
+    sidebar = page.locator("aside.sidebar")
+    expect(sidebar).to_have_attribute("data-collapsed", "true")
+    assert 60 <= sidebar.bounding_box()["width"] <= 68
+    page.get_by_role("button", name="展开侧栏", exact=True).click()
+    expect(sidebar).to_have_attribute("data-collapsed", "false")
+    assert 208 <= sidebar.bounding_box()["width"] <= 216
+    page.reload()
+    expect(page.get_by_role("button", name="收起侧栏", exact=True)).to_be_visible()
+    page.get_by_role("button", name="收起侧栏", exact=True).focus()
+    page.keyboard.press("Control+b")
+    expect(sidebar).to_have_attribute("data-collapsed", "true")
+    page.emulate_media(reduced_motion="no-preference")
+    for _ in range(3):
+        page.get_by_role("button", name="展开侧栏", exact=True).click()
+        page.get_by_role("button", name="收起侧栏", exact=True).click()
+    page.wait_for_function("Math.abs(document.querySelector('aside.sidebar').getBoundingClientRect().width-64)<1")
+    assert_accessible(page)
+    assert not errors
+
+
+def test_model_motion_frames_and_native_selection(native_ui):
+    import json
+    import re
+    page, host, store, errors = native_ui
+    for model, name in [("gpt-5.6-sol", "模型网关"), ("gpt-5.6-luna", "快速模型")]:
+        store.save({"name": name, "base_url": "http://127.0.0.1:1/v1", "api": "openai-responses", "model": model, "api_key": "motion-contract-key"})
+    host.update_gateways()
+    host.control("start_agent")
+    page.reload()
+    expect(page.get_by_role("button", name=re.compile("^选择模型，当前 gpt-5.6-sol"))).to_be_visible()
+    page.emulate_media(reduced_motion="no-preference")
+    page.get_by_role("button", name=re.compile("^选择模型，当前")).click()
+    frames = page.evaluate("""async () => {
+      const values=[]; for(let i=0;i<28;i++){await new Promise(requestAnimationFrame);const el=document.querySelector('.model-popover');if(el){const rect=el.getBoundingClientRect();values.push({width:rect.width,top:rect.top,opacity:getComputedStyle(el).opacity})}}return values;
+    }""")
+    assert len({round(float(frame['opacity']), 2) for frame in frames}) > 2, frames
+    expect(page.get_by_role("dialog", name="选择模型", exact=True)).to_be_visible()
+    page.get_by_role("combobox", name="搜索模型", exact=True).fill("gpt-5.6")
+    page.get_by_role("option", name=re.compile("gpt-5.6-luna")).hover()
+    page.get_by_role("option", name=re.compile("gpt-5.6-sol")).hover()
+    page.get_by_role("combobox", name="搜索模型", exact=True).press("Escape")
+    expect(page.get_by_role("dialog", name="选择模型", exact=True)).to_be_hidden()
+    # Close and reopen during contraction: the old timeline must not hide the new menu.
+    button = page.get_by_role("button", name=re.compile("^选择模型，当前"))
+    button.click()
+    page.get_by_role("combobox", name="搜索模型", exact=True).press("Escape")
+    button.click()
+    expect(page.get_by_role("dialog", name="选择模型", exact=True)).to_be_visible()
+    expect(page.get_by_role("combobox", name="搜索模型", exact=True)).to_be_focused()
+    page.get_by_role("combobox", name="搜索模型", exact=True).press("Escape")
+    expect(page.get_by_role("dialog", name="选择模型", exact=True)).to_be_hidden()
+    slider = page.get_by_role("slider", name="思考深度", exact=True)
+    expect(slider).to_have_attribute("aria-disabled", "false")
+    slider.press('ArrowRight')
+    expect(slider).to_have_attribute("aria-valuetext", "深入")
+    expect(slider).to_have_attribute("aria-disabled", "false")
+    assert host.rpc("get_state")["thinkingLevel"] == "high"
+    page.get_by_role("button", name="展开侧栏", exact=True).click()
+    page.wait_for_function("Math.abs(document.querySelector('aside.sidebar').getBoundingClientRect().width-212)<1")
+    page.get_by_role("button", name="收起侧栏", exact=True).click()
+    page.wait_for_function("Math.abs(document.querySelector('aside.sidebar').getBoundingClientRect().width-64)<1")
+    Path('/tmp/morning-design-depth/model-animation-frames.json').write_text(json.dumps(frames))
+    assert not errors
+
+
+def test_thinking_drag_slash_and_native_commands(native_ui):
+    """Real native session: preview without writes, one release write, slash without inference."""
+    import json
+    import re
+    page, host, store, errors = native_ui
+    store.save({"name": "模型网关", "base_url": "http://127.0.0.1:1/v1", "api": "openai-responses", "model": "gpt-5.6-sol", "api_key": "thinking-fixture-key"})
+    host.update_gateways()
+    host.control("start_agent")
+    host.rpc("set_thinking_level", {"level": "medium"})
+    levels = host.rpc("get_available_thinking_levels")["levels"]
+    page.reload()
+    trigger = page.get_by_role("slider", name="思考深度", exact=True)
+    expect(trigger).to_have_attribute("aria-disabled", "false")
+    page.emulate_media(reduced_motion="no-preference")
+    writes = []
+    chats = []
+    page.on("request", lambda request: writes.append(request.post_data_json) if request.url.endswith('/api/pulse/pi') and request.method == 'POST' and request.post_data_json.get('command') == 'set_thinking_level' else None)
+    page.on("request", lambda request: chats.append(request.post_data) if request.url.endswith('/api/pulse/chat') and request.method == 'POST' else None)
+    box = trigger.bounding_box()
+    page.mouse.move(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2)
+    page.mouse.down()
+    page.mouse.move(box['x'] + box['width'] / 2 + 200, box['y'] + box['height'] / 2, steps=15)
+    assert page.get_by_role("dialog", name="思考深度", exact=True).count() == 0
+    assert trigger.bounding_box()["width"] > box["width"] + 35
+    assert host.rpc("get_state")["thinkingLevel"] == "medium"
+    assert not writes
+    page.screenshot(path='/tmp/morning-design-depth/thinking-stretched-1440.png')
+    page.mouse.up()
+    slider = trigger
+    expect(slider).to_have_attribute("aria-valuenow", str(len(levels) - 1))
+    expect(slider).to_have_attribute("aria-disabled", "false")
+    assert host.rpc("get_state")["thinkingLevel"] == levels[-1]
+    assert len(writes) == 1
+    frames = page.evaluate("""async () => {const values=[]; for(let i=0;i<42;i++){await new Promise(requestAnimationFrame);values.push(document.querySelector('.thinking-elastic').getBoundingClientRect().width)}return values}""")
+    assert len({round(frame, 1) for frame in frames}) > 5
+    page.wait_for_function("Math.abs(document.querySelector('.thinking-elastic').getBoundingClientRect().width-84)<1")
+    Path('/tmp/morning-design-depth/thinking-animation-frames.json').write_text(json.dumps(frames))
+    page.screenshot(path='/tmp/morning-design-depth/thinking-resting-1440.png')
+    assert min(frames) >= 75
+    slider.press("Home")
+    expect(slider).to_have_attribute("aria-valuenow", "0")
+    expect(slider).to_have_attribute("aria-disabled", "false")
+    assert host.rpc("get_state")["thinkingLevel"] == levels[0]
+    # Adjust inside an existing draft and retain the rest of that draft.
+    composer = page.get_by_role("combobox", name="给 Agent 的消息", exact=True)
+    composer.fill("请分析 /")
+    menu = page.get_by_role("listbox", name="对话快捷选择", exact=True)
+    expect(menu.get_by_role("option", name=re.compile("思考深度"))).to_have_attribute("aria-disabled", "false")
+    page.get_by_role("button", name="发送消息", exact=True).click()
+    expect(composer).to_have_value("请分析 /think ")
+    choices = page.get_by_role("listbox", name="选择思考深度", exact=True)
+    assert choices.bounding_box()['height'] < 55
+    page.wait_for_function("Number(getComputedStyle(document.querySelector('.composer-command-menu')).opacity) === 1")
+    assert_accessible(page)
+    choices.get_by_role("option", name="深入 较高推理强度", exact=True).click()
+    expect(composer).to_have_value("请分析 ")
+    expect(slider).to_have_attribute("aria-valuetext", "深入")
+    assert host.rpc("get_state")["thinkingLevel"] == 'high'
+    assert not chats
+    # Real extension discovery remains available and is only inserted, never auto-run.
+    composer.fill('/ui-check')
+    expect(page.get_by_role("option", name="/ui-check Native dialog test", exact=True)).to_be_visible()
+    composer.press("Enter")
+    expect(composer).to_have_value('/ui-check ')
+    assert not chats
+    composer.press("Enter")
+    expect(page.get_by_role("dialog", name="Native select", exact=True)).to_be_visible()
+    page.get_by_role("dialog", name="Native select", exact=True).get_by_role("button", name="Cancel", exact=True).click()
+    expect(page.get_by_role("dialog", name="Native select", exact=True)).to_be_hidden()
+    # Mobile and keyboard access; reduced motion still lands exactly on the native value.
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.emulate_media(reduced_motion="reduce")
+    expect(slider).to_be_visible()
+    assert_accessible(page)
+    page.screenshot(path='/tmp/morning-design-depth/thinking-390.png')
+    composer.fill('/think med')
+    expect(choices.get_by_role("option", name="均衡 中等推理强度", exact=True)).to_be_visible()
+    composer.press("Enter")
+    expect(composer).to_have_value('')
+    assert host.rpc("get_state")["thinkingLevel"] == 'medium'
+    assert len(chats) == 1
+    page.reload()
+    expect(page.get_by_role("slider", name="思考深度", exact=True)).to_have_attribute("aria-valuetext", "均衡")
+    assert not errors
+
+    Path('/tmp/morning-design-depth/thinking-interactions.json').write_text(json.dumps({'writes':len(writes),'native_extension_calls':len(chats),'levels':levels,'no_model_generation':True}))
+
+
+def test_slash_preserves_native_command_name_and_model_capabilities(native_ui, tmp_path):
+    import re
+    page, host, store, errors = native_ui
+    (tmp_path / 'agent/extensions/collision.js').write_text("export default function(pi){pi.registerCommand('think',{description:'An existing native command',handler:async()=>{}})}")
+    for model, reasoning in [('reasoning-model', True), ('plain-model', False)]:
+        store.save({"name": model, "base_url": "http://127.0.0.1:1/v1", "api": "openai-responses", "model": model,
+                    "model_options": {"reasoning": reasoning}, "api_key": "capability-fixture-key"})
+    host.update_gateways()
+    host.control("start_agent")
+    page.reload()
+    composer = page.get_by_role('combobox', name='给 Agent 的消息', exact=True)
+    composer.fill('/think')
+    native = page.get_by_role('option', name='/think An existing native command', exact=True)
+    expect(native).to_have_attribute('aria-disabled', 'false')
+    assert page.get_by_role('option', name=re.compile('^思考深度 ')).count() == 0
+    composer.press('Enter')
+    expect(composer).to_have_value('/think ')
+    assert page.get_by_role('listbox', name='选择思考深度').count() == 0
+    composer.fill('/')
+    page.get_by_role('option', name=re.compile('^思考深度 ')).click()
+    expect(composer).to_have_value('/morning:think ')
+    page.get_by_role('option', name='深入 较高推理强度', exact=True).click()
+    expect(composer).to_have_value('')
+    assert host.rpc('get_state')['thinkingLevel'] == 'high'
+    plain = next(model for model in host.control('models') if model['id'] == 'plain-model')
+    host.rpc('set_model', {'provider': plain['provider'], 'modelId': plain['id']})
+    page.reload()
+    expect(page.get_by_role('button', name=re.compile('^选择模型，当前 plain-model'))).to_be_visible()
+    assert page.get_by_role('slider', name='思考深度').count() == 0
+    composer.fill('/')
+    expect(page.get_by_role('option', name='/think An existing native command', exact=True)).to_be_visible()
+    assert page.get_by_role('option', name=re.compile('^思考深度 ')).count() == 0
+    assert_accessible(page)
+    assert not errors
+
+
+def test_thinking_failure_and_pointer_cancel_preserve_native_state(native_ui):
+    page, host, store, errors = native_ui
+    store.save({"name": "Thinking", "base_url": "http://127.0.0.1:1/v1", "api": "openai-responses", "model": "gpt-5.6-sol", "api_key": "thinking-fixture-key"})
+    host.update_gateways()
+    host.control("start_agent")
+    host.rpc("set_thinking_level", {"level": "medium"})
+    page.reload()
+    trigger = page.get_by_role("slider", name="思考深度", exact=True)
+    expect(trigger).to_have_attribute("aria-disabled", "false")
+    box = trigger.bounding_box()
+    page.mouse.move(box['x'] + 30, box['y'] + 15)
+    page.mouse.down()
+    page.mouse.move(box['x'] + 110, box['y'] + 15, steps=4)
+    page.keyboard.press("Escape")
+    page.mouse.up()
+    assert host.rpc("get_state")["thinkingLevel"] == 'medium'
+    assert page.get_by_role("dialog", name="思考深度", exact=True).count() == 0
+    # Fault injection tests only the error branch; success paths use the real Pi above.
+    def unavailable(route):
+        if route.request.post_data_json.get('command') == 'set_thinking_level':
+            route.fulfill(status=503, content_type='application/json', body='{"error":{"message":"Pi 暂时无法保存思考深度"}}')
+        else:
+            route.continue_()
+    page.route('**/api/pulse/pi', unavailable)
+    composer = page.get_by_role("combobox", name="给 Agent 的消息", exact=True)
+    composer.fill('/think high')
+    choices = page.get_by_role("listbox", name="选择思考深度", exact=True)
+    expect(choices.get_by_role("option", name="深入 较高推理强度", exact=True)).to_have_attribute("aria-disabled", "false")
+    composer.press('Enter')
+    expect(page.locator('.composer-command-menu').get_by_role('alert')).to_contain_text('Pi 暂时无法保存')
+    expect(composer).to_have_value('/think high')
+    assert host.rpc('get_state')['thinkingLevel'] == 'medium'
+    page.unroute('**/api/pulse/pi', unavailable)
+    composer.press('Enter')
+    expect(composer).to_have_value('')
+    assert host.rpc('get_state')['thinkingLevel'] == 'high'
     assert not errors

@@ -148,11 +148,17 @@ class PulseAPI(WakeCoreAPI):
         if not self.native:
             raise SchemaMismatch("Pi 原生运行时尚未连接")
         body = req.json()
-        if getattr(self, "platform", None) and self.platform.background_scope is not None and body.get("command") in ("reload", "package", "import_session"):
+        if getattr(self, "platform", None) and self.platform.background_scope is not None and body.get("command") in ("reload", "package", "import_session", "update_native_preferences", "set_workspace_trust"):
             raise SchemaMismatch("请先停止或等待当前后台观察完成，再修改运行时资源。")
-        if body.get("command") not in {"start_agent", "resources", "sessions", "context", "reload", "set_tools", "providers", "models", "auth_login", "auth_logout", "auth_cancel", "package", "navigate_tree", "import_session"}:
+        if body.get("command") not in {"start_agent", "resources", "sessions", "context", "reload", "set_tools", "providers", "models", "auth_login", "auth_logout", "auth_cancel", "package", "navigate_tree", "import_session", "native_preferences", "update_native_preferences", "set_workspace_trust"}:
             raise SchemaMismatch("无法识别的 Pi 设置")
-        return self._native_result(lambda: self.native.host.control(body["command"], body.get("params", {}), timeout=300))
+        def execute():
+            if body["command"] in ("update_native_preferences", "set_workspace_trust"):
+                with self.native.operations:
+                    self.native.assert_idle()
+                    return self.native.host.control(body["command"], body.get("params", {}), timeout=300)
+            return self.native.host.control(body["command"], body.get("params", {}), timeout=300)
+        return self._native_result(execute)
 
     def _pi_interaction(self, req, principal, args):
         if not self.native:

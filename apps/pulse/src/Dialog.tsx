@@ -11,7 +11,7 @@ export function Dialog({title, children, close, wide = false, eyebrow = 'MORNING
       .filter(el => !el.hasAttribute('disabled') && el.getClientRects().length > 0)
     focusable()[0]?.focus()
     const handle = (event: KeyboardEvent) => {
-      if (Array.from(document.querySelectorAll('[role="dialog"]')).at(-1) !== ref.current) return
+      if (Array.from(document.querySelectorAll('[role="dialog"][aria-modal="true"]')).at(-1) !== ref.current) return
       if (event.key === 'Escape') {event.preventDefault(); closeRef.current()}
       if (event.key === 'Tab') {
         const elements = focusable(), first = elements[0], last = elements.at(-1)
