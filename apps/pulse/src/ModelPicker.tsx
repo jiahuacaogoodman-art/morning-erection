@@ -75,7 +75,7 @@ export function ModelPicker({pi,busy,refresh,thinking}:{pi:PiSnapshot;busy:boole
             <span className="model-option-symbol"><Cpu size={15}/></span><span className="model-option-copy"><strong>{model.name}</strong><span>{model.reasoning&&<span><Brain size={10}/>思考</span>}{model.input.includes('image')&&<span><Image size={10}/>图片</span>}<span>{model.contextWindow>=1000000?`${Number((model.contextWindow/1000000).toFixed(2))}M`:`${Math.round(model.contextWindow/1000)}k`} 上下文</span></span></span>{selected?<Check size={15} className="model-selected"/>:<span className="model-choice-dot"/>}
           </button></div>
         })}</div>
-        {loading&&<p className="model-picker-notice" role="status">正在读取 Pi 模型…</p>}{!loading&&!filtered.length&&!error&&<div className="model-picker-empty">{models.length?'没有匹配的模型':'连接模型服务后，模型会出现在这里。'}</div>}
+        {loading&&<p className="model-picker-notice" role="status">正在读取 Pi 模型…</p>}{!loading&&!filtered.length&&!error&&<div className="model-picker-empty">{models.length?'没有匹配的模型':'尚未连接模型服务'}</div>}
         <button type="button" className="model-manage" onClick={configure}><SlidersHorizontal size={13}/>管理模型与连接<ArrowUpRight size={12}/></button>
       </>}
     </div>,document.body)}

@@ -1,8 +1,9 @@
 import {useEffect, useState} from 'react'
-import {Check, CheckCheck, CornerUpLeft, RefreshCw, ShieldCheck} from 'lucide-react'
+import {CheckCheck, CornerUpLeft, RefreshCw, ShieldCheck} from 'lucide-react'
 import {piControl} from './NativePi'
 import {Disclosure} from './Motion'
 import {Dialog} from './Dialog'
+import {FieldHelp} from './FieldHelp'
 
 export type PreferenceValue = string | number | boolean | string[] | null
 export type PreferenceField = {key:string; group:string; label:string; type:'select'|'integer'|'boolean'|'text'|'list'; help:string;
@@ -55,7 +56,7 @@ function PreferenceRow({field,controller,disabled}:{field:PreferenceField;contro
   const inactive=disabled||controller.scope==='project'&&!!field.globalOnly
   return <div className={`preference-row ${inactive?'is-disabled':''}`} id={'setting-'+field.key}>
     <div className="preference-copy"><div className="preference-title-row"><label htmlFor={id}>{field.label}{field.applies==='new_session'&&!field.label.includes('新会话')&&<span className="preference-tag">新会话</span>}</label>
-      <small>{field.globalOnly?'仅用户设置':inherited?controller.scope==='project'?'继承用户设置或 Pi 默认':'使用 Pi 默认':'此范围已配置'}</small></div><p>{field.help}</p></div>
+      <small>{field.globalOnly?'仅用户设置':inherited?controller.scope==='project'?'继承用户设置或 Pi 默认':'使用 Pi 默认':'此范围已配置'}</small>{field.help&&<FieldHelp label={field.label}>{field.help}</FieldHelp>}</div></div>
     <div className="preference-control">
       {field.type==='boolean'?<button id={id} type="button" role="switch" aria-label={field.label} aria-checked={!!current} disabled={inactive} className="switch" onClick={()=>controller.setField(field.key,!current)}><span className="switch-knob"/></button>
         : field.type==='select'?<select id={id} value={String(current??'')} disabled={inactive} onChange={e=>controller.setField(field.key,e.target.value||null)}><option value="">由 Pi 决定</option>{field.options?.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}</select>
@@ -79,7 +80,7 @@ export function NativePreferences({controller,groups,busyAgent,focusKey}:{contro
     {scope==='project'&&!data.projectTrusted&&<div className="settings-callout"><ShieldCheck size={18}/><div><strong>先确认这个工作区</strong><p>信任后，Pi 可以载入这里的配置、Skills 和可执行扩展。</p><code>{data.workspace}</code><button className="secondary-button" disabled={busy||busyAgent} onClick={()=>setTrustPrompt(true)}>检查并信任工作区</button></div></div>}
     {busyAgent&&<p className="settings-hint" role="status">当前任务完成或停止后，可以修改原生设置。</p>}
     {groups.map((group,index)=>{const fields=data.fields.filter(f=>f.group===group);const pending=fields.filter(f=>Object.hasOwn(controller.draft,f.key)).length;const definition=preferenceGroups[group];const groupOpen=opened[group]??index===0
-      return <Disclosure key={group} className="preference-group" title={<>{definition.title}{pending>0&&<span className="setting-count">{pending} 项待保存</span>}</>} hint={definition.hint} open={groupOpen} onOpenChange={open=>setOpened(value=>({...value,[group]:open}))}>
+      return <Disclosure key={group} className="preference-group" title={<>{definition.title}{pending>0&&<span className="setting-count">{pending} 项待保存</span>}</>} open={groupOpen} onOpenChange={open=>setOpened(value=>({...value,[group]:open}))}>
         {fields.filter(f=>!f.advanced||f.key===focusKey).map(field=><PreferenceRow field={field} key={field.key} controller={controller} disabled={disabled}/>)}
         {fields.some(f=>f.advanced&&f.key!==focusKey)&&<Disclosure className="preference-advanced" title="高级参数">{fields.filter(f=>f.advanced&&f.key!==focusKey).map(field=><PreferenceRow field={field} key={field.key} controller={controller} disabled={disabled}/>)}</Disclosure>}
         {group==='trust'&&data.projectTrusted&&<div className="trust-state"><CheckCheck size={15}/><span>当前工作区已通过 Pi 信任检查</span><button className="text-button" disabled={busy||busyAgent} onClick={()=>setTrustPrompt(false)}>管理信任</button></div>}
@@ -87,7 +88,7 @@ export function NativePreferences({controller,groups,busyAgent,focusKey}:{contro
     })}
     {groups.includes('context')&&Object.keys(data.modelOverrides).length>0&&<Disclosure title="现有模型专用覆盖" hint="这些值由原生 Pi 配置管理，会优先于通用上下文参数。"><pre className="settings-code">{JSON.stringify(data.modelOverrides,null,2)}</pre></Disclosure>}
     {data.diagnostics.map((item,i)=><p role="alert" className="inline-error" key={i}>{item.message}</p>)}
-    <p className="native-settings-note"><Check size={13}/>直接保存到 Pi 原生设置，CLI 与 GUI 共用。<button className="text-button" disabled={busy||!!controller.dirty} onClick={()=>void controller.load()}><RefreshCw size={12}/>重新读取</button></p>
+    <p className="native-settings-note"><button className="text-button" disabled={busy||!!controller.dirty} onClick={()=>void controller.load()}><RefreshCw size={12}/>重新读取</button></p>
     {trustPrompt!==null&&<Dialog title={trustPrompt?'信任这个工作区？':'取消工作区信任？'} close={()=>{if(!busy)setTrustPrompt(null)}}><div className="creator-body"><p>授权范围仅限当前工作区：</p><code className="pi-path">{data.workspace}</code><p>{trustPrompt?'Pi 将允许加载其中的设置、Skills 和扩展代码。请确认这个目录的来源可信。':'Pi 将停止加载这里的工作区设置与扩展。用户目录里的设置与会话记录仍保留。'}</p>{controller.error&&<p role="alert" className="inline-error">{controller.error}</p>}<div className="pi-button-row"><button className="primary-button" disabled={busy||busyAgent} onClick={()=>void controller.trust(trustPrompt).then(ok=>{if(ok)setTrustPrompt(null)})}>{trustPrompt?'信任并使用':'取消信任'}</button><button className="secondary-button" disabled={busy} onClick={()=>setTrustPrompt(null)}>返回</button></div></div></Dialog>}
   </div>
 }

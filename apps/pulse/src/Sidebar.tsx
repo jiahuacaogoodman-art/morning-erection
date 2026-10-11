@@ -1,6 +1,6 @@
 import {useRef} from 'react'
 import type {RefObject} from 'react'
-import {AlertCircle, ChevronRight, Eye, FolderOpen, History, Laptop, ListTodo, MessageSquare, Monitor, Settings, SquarePen} from 'lucide-react'
+import {AlertCircle, ChevronRight, Eye, FolderOpen, History, Laptop, ListTodo, MessageSquare, Settings, SquarePen,Square} from 'lucide-react'
 import {MorningMark} from './Brand'
 import {Disclosure, gsap, useGSAP, useReducedMotion} from './Motion'
 import type {PiSession} from './NativePi'
@@ -8,8 +8,8 @@ import type {Watch} from './types'
 
 type Props = {navigationRef:RefObject<HTMLElement|null>; expanded:boolean; mobile:boolean; mobileOpen:boolean; view:string;
   platformAvailable:boolean; hasPi:boolean; sessions:PiSession[]; sessionId?:string; tasks:Watch[]; selectedId?:string; workspace?:string|null;
-  busy:boolean; connected:boolean; error:string; onNew:()=>void; onView:(view:string)=>void; onSession:(session:PiSession)=>void; onWatch:(watch:Watch)=>void; onHistory:()=>void}
-export function Sidebar({navigationRef,expanded,mobile,mobileOpen,view,platformAvailable,hasPi,sessions,sessionId,tasks,selectedId,workspace,busy,connected,error,onNew,onView,onSession,onWatch,onHistory}:Props) {
+  busy:boolean; connected:boolean; error:string; onNew:()=>void; onView:(view:string)=>void; onSession:(session:PiSession)=>void;onStopSession:(id:string)=>void; onWatch:(watch:Watch)=>void; onHistory:()=>void}
+export function Sidebar({navigationRef,expanded,mobile,mobileOpen,view,platformAvailable,hasPi,sessions,sessionId,tasks,selectedId,workspace,busy,connected,error,onNew,onView,onSession,onStopSession,onWatch,onHistory}:Props) {
   const reduced=useReducedMotion(), first=useRef(true), activeRail=useRef<HTMLDivElement>(null), mainNav=useRef<HTMLElement>(null)
   const collapsed=!expanded&&!mobile
   useGSAP(()=>{
@@ -25,7 +25,7 @@ export function Sidebar({navigationRef,expanded,mobile,mobileOpen,view,platformA
     if(!activeRail.current||!target){if(activeRail.current)gsap.to(activeRail.current,{opacity:0,duration:.1});return}
     gsap.to(activeRail.current,{y:target.offsetTop,height:target.offsetHeight,opacity:1,duration:reduced?0:.3,ease:'power3.inOut',overwrite:true})
   },{scope:mainNav,dependencies:[view,expanded,mobile,reduced]})
-  const nav=[{id:'chat',label:'Agent 对话',Icon:MessageSquare},...(platformAvailable?[{id:'computer',label:'Computer',Icon:Monitor},{id:'watch',label:'Watch',Icon:Eye},{id:'tasks',label:'Tasks',Icon:ListTodo},{id:'devices',label:'Devices',Icon:Laptop}]:[])]
+  const nav=[{id:'chat',label:'Agent 对话',Icon:MessageSquare},...(platformAvailable?[{id:'watch',label:'Watch',Icon:Eye},{id:'tasks',label:'Tasks',Icon:ListTodo},{id:'devices',label:'Devices',Icon:Laptop}]:[])]
   const tip=(label:string)=>collapsed?<span className="rail-tooltip" aria-hidden="true">{label}</span>:null
   return <aside ref={navigationRef} className={`sidebar ${mobileOpen?'mobile-open':''}`} data-collapsed={collapsed} inert={mobile&&!mobileOpen} aria-label="任务导航">
     <a className="brand" href="/#chat" aria-label="Morning 首页"><span className="brand-mark"><MorningMark size={35}/></span><span className="sidebar-wordmark">morning<span className="brand-period">.</span></span>{tip('Morning')}</a>
@@ -34,7 +34,7 @@ export function Sidebar({navigationRef,expanded,mobile,mobileOpen,view,platformA
       {hasPi&&<button className="nav-item history-nav" aria-label="全部会话" onClick={onHistory}><History size={18}/><span className="nav-label">全部会话</span>{tip('全部会话')}</button>}
     </nav>
     <div className="sidebar-secondary" inert={collapsed} aria-hidden={collapsed}>
-      {hasPi&&<Disclosure title={<>最近会话 <span>{sessions.length}</span></>} defaultOpen><div className="session-nav">{sessions.slice(0,5).map(session=><button key={session.id} className={session.id===sessionId?'selected':''} disabled={busy} title={session.name||session.firstMessage} onClick={()=>onSession(session)}><MessageSquare size={13}/><span>{session.name||session.firstMessage||'未命名会话'}</span></button>)}</div>{sessions.length===0&&<p className="sidebar-empty">发送消息后自动保存</p>}</Disclosure>}
+      {hasPi&&<Disclosure title={<>最近会话 <span>{sessions.length}</span></>} defaultOpen><div className="session-nav">{sessions.slice().sort((a,b)=>Number(!!b.running)-Number(!!a.running)).slice(0,8).map(session=><div className="sidebar-session-row" key={session.id}><button className={session.id===sessionId?'selected':''} disabled={busy} title={session.name||session.firstMessage} onClick={()=>onSession(session)}>{session.running||session.attention?<i className={`session-activity-dot ${session.attention?'attention':''}`} aria-label={session.attention?'等待确认':'正在执行'}/>:<MessageSquare size={13}/>}<span>{session.name||session.firstMessage||'未命名会话'}</span></button>{session.running&&<button type="button" className="session-stop" aria-label={`停止会话 ${session.name||session.firstMessage||'未命名会话'}`} title="只停止这个会话" onClick={()=>onStopSession(session.id)}><Square size={10}/></button>}</div>)}</div>{sessions.length===0&&<p className="sidebar-empty">发送消息后自动保存</p>}</Disclosure>}
       <Disclosure title={<>后台驻守 <span>{tasks.length}</span></>} defaultOpen={tasks.length>0}><div className="watch-nav">{tasks.map(task=><button key={task.task_id} className={selectedId===task.task_id?'selected':''} title={task.label} onClick={()=>onWatch(task)}><span className={`nav-dot ${task.state}`}/><span>{task.label}</span>{task.state==='approval'&&<AlertCircle size={13}/>}</button>)}</div>{tasks.length===0&&<p className="sidebar-empty">在对话中描述等待条件</p>}</Disclosure>
     </div>
     <div className="sidebar-bottom">

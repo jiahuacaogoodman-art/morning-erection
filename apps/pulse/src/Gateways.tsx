@@ -76,9 +76,8 @@ export function GatewaySettings({busyAgent, onReady}: {busyAgent?: boolean; onRe
   }
   const runtime = data?.runtime
   return <section className="settings-group gateway-section" aria-labelledby="gateway-heading">
-    <div className="section-heading"><div><span className="eyebrow">CONNECTION</span><h2 id="gateway-heading">模型网关</h2></div>
+    <div className="section-heading"><div><h2 id="gateway-heading" className="sr-only">模型网关</h2></div>
       <button className="secondary-button" disabled={!!busy || busyAgent} onClick={() => edit('new')}><Plus size={14}/>添加 Gateway</button></div>
-    <p className="settings-hint">凭据保存在 {data?.secure_storage === 'macOS Keychain' ? 'macOS 钥匙串' : '系统安全存储'}。连接测试会发起一次简短的模型调用。</p>
     {!data && !loadError && <p role="status">正在读取连接配置…</p>}
     {loadError && <p role="alert" className="inline-error">{loadError} <button className="text-button" onClick={() => setRefresh(value => value + 1)}>重新读取</button></p>}
     {runtime?.selected && <p className="settings-hint">当前会话：<strong>{runtime.selected.id}</strong> · {data?.items.find(item => item.provider_id === runtime.selected?.provider)?.name || runtime.selected.provider}</p>}
@@ -87,7 +86,7 @@ export function GatewaySettings({busyAgent, onReady}: {busyAgent?: boolean; onRe
       <p>{runtime.message || '配置已保存，尚未应用到 Pi。'}</p>
       <button className="secondary-button" disabled={!!busy || busyAgent} onClick={() => void action({action:'apply'}, 'apply').catch(() => {})}><RefreshCw size={14}/>重新应用连接</button>
     </div>}
-    {data?.items.length === 0 && <div className="gateway-empty"><KeyRound size={25}/><strong>先连接你的模型服务</strong><span>填入 API 根地址、模型名称和凭据即可开始。</span></div>}
+    {data?.items.length === 0 && <div className="gateway-empty"><KeyRound size={25}/><strong>先连接你的模型服务</strong></div>}
     <div className="gateway-list">{data?.items.map(item => {
       const testing = item.connection_test?.state === 'running'
       const selected = runtime?.selected?.provider === item.provider_id
@@ -102,7 +101,7 @@ export function GatewaySettings({busyAgent, onReady}: {busyAgent?: boolean; onRe
         {data.test_errors?.[item.id] && <p className="inline-error" role="alert">{data.test_errors[item.id]}</p>}
         <div className="gateway-actions">
           {testing ? <button className="secondary-button" disabled={!!busy} onClick={() => void action({action:'cancel_test', test_id:item.connection_test!.id}, 'cancel').catch(() => {})}>取消测试</button>
-            : <button className="secondary-button" disabled={!!busy || !item.has_credentials || !!loadError} onClick={() => void action({action:'test', id:item.id}, item.id).catch(() => {})}>测试连接</button>}
+            : <button className="secondary-button" title="发送一次简短的模型请求验证连接" disabled={!!busy || !item.has_credentials || !!loadError} onClick={() => void action({action:'test', id:item.id}, item.id).catch(() => {})}>测试连接</button>}
           <button className="text-button" disabled={!!busy || busyAgent} onClick={() => edit(item)}>编辑</button>
           {(!selected || data.active_id !== item.id) && <button className="text-button" disabled={!!busy || busyAgent || !item.has_credentials || !!loadError} onClick={() => void action({action:'activate', id:item.id, expected_revision:data.revision}, 'activate').catch(() => {})}>切换到此连接</button>}
         </div>
@@ -112,7 +111,7 @@ export function GatewaySettings({busyAgent, onReady}: {busyAgent?: boolean; onRe
     {feedback && <p className="gateway-feedback" role="status"><ShieldCheck size={15}/>{feedback}</p>}
     {data?.items.some(item => item.id === data.active_id && item.has_credentials) && <button className="primary-button gateway-start" disabled={!!busy || busyAgent || !!runtime?.selectionError} onClick={() => void start()}>{busy === 'start' ? '正在启动 Pi…' : runtime?.agentReady ? '返回 Agent 对话' : '启动 Agent · 开始对话'}</button>}
     {busyAgent && <p className="settings-hint">当前任务完成或停止后，可以修改连接。连接测试不影响正在进行的对话。</p>}
-    {editing && <Dialog title={editing === 'new' ? '添加模型网关' : '编辑模型网关'} close={() => {if (!busy) {setEditing(null); setKey(''); setConfirm(null)}}} eyebrow="GATEWAY">
+    {editing && <Dialog title={editing === 'new' ? '添加模型网关' : '编辑模型网关'} close={() => {if (!busy) {setEditing(null); setKey(''); setConfirm(null)}}}>
       <form className="creator-body gateway-form" onSubmit={e => {e.preventDefault(); void save()}}>
         <label className="field-label">名称<input autoComplete="off" required value={form.name} onChange={e => setForm({...form, name:e.target.value})}/></label>
         <label className="field-label">API 根地址<input type="url" autoComplete="off" required placeholder="https://…/v1" value={form.base_url} onChange={e => setForm({...form, base_url:e.target.value})}/></label>

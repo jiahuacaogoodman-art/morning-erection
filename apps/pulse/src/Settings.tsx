@@ -4,14 +4,15 @@
 */
 import { useEffect, useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { ArrowUpRight, Bell, BellOff, Blocks, Check, CheckCheck, GitBranch, Info, KeyRound, Monitor, Moon, Palette, Search, SlidersHorizontal, Sun, X } from 'lucide-react'
+import { ArrowUpRight, Bell, BellOff, Blocks, Check, GitBranch, Info, KeyRound, Monitor, Moon, Palette, Search, SlidersHorizontal, Sun, X } from 'lucide-react'
 import { api } from './api'
 import { Cadence } from './Cadence'
 import { GatewaySettings } from './Gateways'
-import { NativePanel } from './NativePi'
+import { NativePanel,piControl } from './NativePi'
 import { NativePreferences, useNativePreferences } from './NativePreferences'
 import { Disclosure, SlidingTabs } from './Motion'
 import { Orb } from './Orb'
+import {FieldHelp} from './FieldHelp'
 import type { OrbState } from './Orb'
 import type { AppSettings, SettingsResponse, State, Theme, Watch } from './types'
 
@@ -129,7 +130,7 @@ function Group({title, hint, children}: {title: string; hint?: string; children:
 function Row({label, hint, children, labelId}: {label: string; hint?: ReactNode; children?: ReactNode; labelId?: string}) {
   return <div className="settings-row">
     <div className="settings-row-text"><span id={labelId} className="settings-row-label">{label}</span>
-      {hint && <span className="settings-row-hint">{hint}</span>}</div>
+      {hint && <FieldHelp label={label}>{hint}</FieldHelp>}</div>
     {children && <div className="settings-row-control">{children}</div>}
   </div>
 }
@@ -225,6 +226,7 @@ export function SettingsView({settings, save, error, state, tasks, onOpenWatch, 
   ]
   const routeCategory = () => {const value=location.hash.split('/')[1];return categories.some(item=>item.id===value)?value:'connections'}
   const [category,setCategory] = useState(routeCategory)
+  const [runtimeError,setRuntimeError]=useState(''),[runtimeBusy,setRuntimeBusy]=useState(false)
   const [query,setQuery] = useState(''), [focusKey,setFocusKey] = useState('')
   const [connectionTab,setConnectionTab] = useState('gateway'), [contextTab,setContextTab] = useState('history'), [resourceTab,setResourceTab] = useState('loaded')
   const native = useNativePreferences(!!state?.pi)
@@ -253,13 +255,13 @@ export function SettingsView({settings, save, error, state, tasks, onOpenWatch, 
   const subnav=(items:string[][],current:string,select:(v:string)=>void)=><SlidingTabs items={items.map(([id,label])=>({id,label}))} value={current} onChange={select} label={active.label+'分组'}/>
 
   return <div className="settings-workspace">
-    <header className="settings-titlebar"><div><h1>设置</h1><p>连接模型，配置 Pi 与工作环境。</p></div><div className="settings-search"><Search size={15}/><input type="search" aria-label="搜索设置" placeholder="搜索设置…" value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==='Escape')setQuery('');if(e.key==='Enter'&&searchResults[0]){e.preventDefault();searchSelect(searchResults[0])}}}/>{query&&<button className="icon-button" aria-label="清除设置搜索" onClick={()=>setQuery('')}><X size={13}/></button>}
+    <header className="settings-titlebar"><div><h1>设置</h1></div><div className="settings-search"><Search size={15}/><input type="search" aria-label="搜索设置" placeholder="搜索设置…" value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==='Escape')setQuery('');if(e.key==='Enter'&&searchResults[0]){e.preventDefault();searchSelect(searchResults[0])}}}/>{query&&<button className="icon-button" aria-label="清除设置搜索" onClick={()=>setQuery('')}><X size={13}/></button>}
       {query&&<div className="settings-search-results" aria-label="设置搜索结果">{searchResults.length?searchResults.map(item=><button key={item.key} onClick={()=>searchSelect(item)}><span>{item.label}<small>{categories.find(c=>c.id===item.category)?.label}</small></span><ArrowUpRight size={13}/></button>):<p>没有找到对应设置。</p>}</div>}
     </div></header>
-    <div className="settings-layout"><nav className="settings-navigation" aria-label="设置分类"><div role="tablist" aria-orientation="vertical" aria-label="设置分类">{categories.map((item,index)=><button type="button" role="tab" key={item.id} id={'settings-tab-'+item.id} aria-selected={category===item.id} aria-controls="settings-pane" tabIndex={category===item.id?0:-1} className={category===item.id?'selected':''} onClick={()=>choose(item.id)} onKeyDown={e=>{const target=e.key==='ArrowDown'?(index+1)%categories.length:e.key==='ArrowUp'?(index-1+categories.length)%categories.length:e.key==='Home'?0:e.key==='End'?categories.length-1:null;if(target!==null){e.preventDefault();choose(categories[target].id);requestAnimationFrame(()=>document.getElementById('settings-tab-'+categories[target].id)?.focus())}}}><item.Icon size={16}/><span>{item.label}</span></button>)}</div><div className="settings-sync-note"><CheckCheck size={14}/><span>Pi 原生设置同步<small>用户 · 工作区</small></span></div></nav>
+    <div className="settings-layout"><nav className="settings-navigation" aria-label="设置分类"><div role="tablist" aria-orientation="vertical" aria-label="设置分类">{categories.map((item,index)=><button type="button" role="tab" key={item.id} id={'settings-tab-'+item.id} aria-selected={category===item.id} aria-controls="settings-pane" tabIndex={category===item.id?0:-1} className={category===item.id?'selected':''} onClick={()=>choose(item.id)} onKeyDown={e=>{const target=e.key==='ArrowDown'?(index+1)%categories.length:e.key==='ArrowUp'?(index-1+categories.length)%categories.length:e.key==='Home'?0:e.key==='End'?categories.length-1:null;if(target!==null){e.preventDefault();choose(categories[target].id);requestAnimationFrame(()=>document.getElementById('settings-tab-'+categories[target].id)?.focus())}}}><item.Icon size={16}/><span>{item.label}</span></button>)}</div></nav>
       <label className="settings-mobile-category"><span className="sr-only">设置分类</span><select aria-label="设置分类" value={category} onChange={e=>choose(e.target.value)}>{categories.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
       <section className="settings-content" id="settings-pane" role="tabpanel" aria-labelledby={'settings-tab-'+category}>
-        <div className="settings-category-head"><span className="settings-category-icon"><active.Icon size={21}/></span><div><h2>{active.label}</h2><p>{active.description}</p></div></div>
+        <div className="settings-category-head"><span className="settings-category-icon"><active.Icon size={21}/></span><div><h2>{active.label}</h2></div></div>
         {error&&<p className="inline-error" role="alert">{error}</p>}
         {native.error&&<p className="inline-error" role="alert">{native.error}{native.dirty>0&&<button className="text-button" onClick={()=>void native.discard()}>放弃修改并重新读取</button>}</p>}
         {native.notice&&<p className="settings-inline-success" role="status"><Check size={14}/>{native.notice}</p>}
@@ -271,11 +273,11 @@ export function SettingsView({settings, save, error, state, tasks, onOpenWatch, 
         {category==='appearance'&&<Group title="界面外观"><Row label="主题" labelId={themeLabel} hint={settings.theme==='system'?'跟随系统外观自动切换':undefined}><div className="segmented" role="radiogroup" aria-labelledby={themeLabel}>{THEMES.map(({value,label,Icon})=><button key={value} type="button" role="radio" aria-checked={settings.theme===value} className={settings.theme===value?'selected':''} onClick={()=>void save({theme:value}).catch(()=>{})}><Icon size={13} aria-hidden="true"/>{label}</button>)}</div></Row><Hue hue={settings.orb_hue} save={save}/><Row label="界面动效" hint="跟随系统的“减少动态效果”设置。开启后，收展直接到达终态。"><span className="settings-value">{matchMedia('(prefers-reduced-motion: reduce)').matches?'减少动态效果':'流畅收展'}</span></Row></Group>}
         {category==='background'&&<>
           <Group title="提醒"><Toggle label="检测到变化时" hint="驻守内容发生变化" checked={settings.notify_on_change} onChange={v=>void setNotify({notify_on_change:v})}/><Toggle label="需要你批准时" hint="Agent 准备好操作，等待确认" checked={settings.notify_on_approval} onChange={v=>void setNotify({notify_on_approval:v})}/><Toggle label="提示音" hint="提醒时播放一声轻响" checked={settings.notify_sound} onChange={v=>void save({notify_sound:v}).catch(()=>{})}/><Row label="系统通知权限" hint={permission==='granted'?'已允许':permission==='denied'?'浏览器已拒绝，请到网站权限中调整':permission==='unsupported'?'此浏览器不支持系统通知':'尚未询问'}>{permission==='default'&&<button className="secondary-button" onClick={()=>void Notification.requestPermission().then(setPermission)}><Bell size={13}/>允许通知</button>}{permission==='granted'&&<button className="secondary-button" disabled={!wantsNotifications} onClick={()=>new Notification('Morning',{body:'通知已经可以正常送达。',tag:'pulse-test'})}><Bell size={13}/>发送测试通知</button>}{permission==='denied'&&<BellOff size={15}/>}</Row></Group>
-          {capabilities&&<Disclosure title="后台能力与系统提醒" hint="Computer、Watch 与关闭页面后的通知。">{capabilities}</Disclosure>}
+          {capabilities&&<Disclosure title="后台能力与系统提醒">{capabilities}</Disclosure>}
           <Disclosure title="新任务的检查节奏" hint="没有变化时逐步放慢；已有任务单独设置。"><form className="settings-cadence" onSubmit={e=>{e.preventDefault();void saveCadence()}}><label className="field-label">最短间隔 · 秒<input type="number" min="2" max="3600" required value={minimum} onChange={e=>setMinimum(e.target.value)}/></label><label className="field-label">最长间隔 · 秒<input type="number" min="2" max="86400" required value={maximum} onChange={e=>setMaximum(e.target.value)}/></label><button className="secondary-button" disabled={!dirty}>保存</button></form>{cadenceError&&<p className="inline-error" role="alert">{cadenceError}</p>}{cadenceSaved&&<p className="settings-saved" role="status">已保存，新任务会从这个节奏开始</p>}<Disclosure title="查看检查节奏的变化"><Cadence minSeconds={Number(minimum)||settings.polling_min_seconds} maxSeconds={Number(maximum)||settings.polling_max_seconds}/></Disclosure></Disclosure>
-          <Disclosure title={<>驻守任务 <span className="setting-count">{tasks.length}</span></>} hint="逐个管理现有任务的间隔和来源。">{tasks.length===0?<Row label="还没有驻守中的任务"/>:tasks.map(t=><Row key={t.task_id} label={t.label} hint={`${stateNames[t.state]||t.lifecycle} · 约 ${t.interval_seconds} 秒一次`}><button className="secondary-button" aria-label={`${t.label}的设置`} onClick={()=>onOpenWatch(t.task_id)}>设置</button></Row>)}</Disclosure>
+          <Disclosure title={<>驻守任务 <span className="setting-count">{tasks.length}</span></>}>{tasks.length===0?<Row label="还没有驻守中的任务"/>:tasks.map(t=><Row key={t.task_id} label={t.label} hint={`${stateNames[t.state]||t.lifecycle} · 约 ${t.interval_seconds} 秒一次`}><button className="secondary-button" aria-label={`${t.label}的设置`} onClick={()=>onOpenWatch(t.task_id)}>设置</button></Row>)}</Disclosure>
         </>}
-        {category==='about'&&<><Group title="服务状态"><dl className="settings-facts"><Fact label="任务理解"><Status ok={!!state?.understanding_available} yes="已配置" no="未配置"/></Fact><Fact label="Pi 运行时"><Status ok={!!state?.pi?.agent_ready} yes="已启动" no="尚未启动"/></Fact><Fact label="浏览器执行"><Status ok={!!runtime?.available} yes="运行中" no="未运行"/></Fact><Fact label="操作模型"><Status ok={settings._model_configured} yes="已配置" no="未配置"/></Fact></dl></Group><Group title="本地数据"><dl className="settings-facts"><Fact label="数据目录">{settings._data_dir?<code>{settings._data_dir}</code>:'仅在内存中'}</Fact>{state?.workspace&&<Fact label="工作区"><code>{state.workspace}</code></Fact>}</dl></Group></>}
+        {category==='about'&&<>{state?.pi&&<Group title="并行任务"><Row label="同时载入的 Pi 会话" hint="每个会话保留独立的原生运行时；切换对话后，任务继续执行。"><select aria-label="Pi 并行会话上限" disabled={runtimeBusy} value={state.pi.runtime_limit||4} onChange={event=>{setRuntimeBusy(true);setRuntimeError('');void piControl('set_concurrency',{limit:Number(event.target.value)}).then(()=>refreshAgent?.()).catch(e=>setRuntimeError(e.message)).finally(()=>setRuntimeBusy(false))}}>{[2,3,4,5,6,7,8].map(value=><option key={value} value={value}>{value} 个会话</option>)}</select></Row>{runtimeError&&<p className="inline-error" role="alert">{runtimeError}</p>}<p className="support-copy">终端进程可独立并行；同一设备的电脑输入按顺序执行。</p></Group>}<Group title="服务状态"><dl className="settings-facts"><Fact label="任务理解"><Status ok={!!state?.understanding_available} yes="已配置" no="未配置"/></Fact><Fact label="Pi 运行时"><Status ok={!!state?.pi?.agent_ready} yes="已启动" no="尚未启动"/></Fact><Fact label="浏览器执行"><Status ok={!!runtime?.available} yes="运行中" no="未运行"/></Fact><Fact label="操作模型"><Status ok={settings._model_configured} yes="已配置" no="未配置"/></Fact></dl></Group><Group title="本地数据"><dl className="settings-facts"><Fact label="数据目录">{settings._data_dir?<code>{settings._data_dir}</code>:'仅在内存中'}</Fact>{state?.workspace&&<Fact label="工作区"><code>{state.workspace}</code></Fact>}</dl></Group></>}
         </div>
       </section>
     </div>

@@ -4,10 +4,12 @@
    data-testid="tool-row" and data-state are preserved for existing tests.
 */
 import { useEffect, useState } from 'react'
+import type {ReactNode} from 'react'
 import { AlertCircle, ArrowUpRight, Check, ChevronDown, ChevronRight, ChevronUp, Eye, LogIn, RotateCw, Terminal } from 'lucide-react'
 import type { DialogueMessage, Draft } from './types'
 import { MorningMark } from './Brand'
 import { CopyButton, Markdown } from './Markdown'
+import type {WorkTarget} from './task-workspace'
 /* ── diff renderer ── */
 function DiffLine({ line }: { line: string }) {
   if (line.startsWith('+')) return <span className="tl-diff-add">{line}</span>
@@ -34,13 +36,15 @@ function DiffView({ diff }: { diff: string }) {
 }
 
 /* ── single tool row ── */
-function ToolRow({ message }: { message: DialogueMessage }) {
+function ToolRow({ message,onOpenResource,action }: { message: DialogueMessage;onOpenResource?:(target:WorkTarget)=>void;action?:ReactNode }) {
   const [open, setOpen] = useState(false)
   const working = message.state === 'working'
   const failed  = message.state === 'error'
 
   const Icon = working ? RotateCw : failed ? AlertCircle : Check
-  const stateLabel = working ? '进行中' : failed ? '未成功' : '已完成'
+  const args=(message.arguments||{}) as Record<string,unknown>
+  const stateLabel = working ? '进行中' : failed ? '未成功' : message.terminal_id&&args.operation==='start'?'已启动':'已完成'
+  const resource:WorkTarget|undefined=message.tool==='morning_computer'?{kind:'computer',id:message.id,device:typeof args.device_id==='string'?args.device_id:'local',app:typeof args.app==='string'?args.app:undefined,display:typeof args.display==='number'?args.display:undefined}:message.terminal_id?{kind:'terminal',id:message.terminal_id}:message.preview_id?{kind:'preview',id:message.preview_id}:undefined
   const hasBody = !!(message.diff || message.output || message.arguments || message.images?.length)
 
   return (
@@ -65,6 +69,8 @@ function ToolRow({ message }: { message: DialogueMessage }) {
           </span>
         )}
       </button>
+      {resource&&onOpenResource&&<button type="button" className="tl-resource-link" onClick={()=>onOpenResource(resource)}><ArrowUpRight size={11}/>{resource.kind==='computer'?'查看操作':resource.kind==='terminal'?'查看终端':'查看网页'}</button>}
+      {action}
 
       {open && hasBody && (
         <div className="tl-tool-body">
@@ -165,17 +171,20 @@ interface TimelineProps {
   startedTasks?: Set<string>
   onRetry?: (text: string) => void
   onLogin?: (url: string, finish: boolean) => Promise<unknown>
+  onOpenResource?: (target:WorkTarget)=>void
+  renderToolAction?: (message:DialogueMessage)=>ReactNode
 }
 
-function ToolGroup({messages}: {messages: DialogueMessage[]}) {
+function ToolGroup({messages,onOpenResource,renderToolAction}: {messages: DialogueMessage[];onOpenResource?:(target:WorkTarget)=>void;renderToolAction?:(message:DialogueMessage)=>ReactNode}) {
   const working = messages.some(m => m.state === 'working')
   const failed = messages.filter(m => m.state === 'error').length
-  const [open, setOpen] = useState(working)
-  useEffect(() => {if (working) setOpen(true)}, [working])
+  const actions=messages.map(message=>renderToolAction?.(message)),hasAction=actions.some(Boolean)
+  const [open, setOpen] = useState(working||hasAction)
+  useEffect(() => {if (working||hasAction) setOpen(true)}, [working,hasAction])
   return <div className="tl-tool-group"><button className="tl-tool-group-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
     <Terminal size={15}/><span>{working ? '正在执行' : '执行记录'}<small>{messages.length} 个步骤{failed > 0 ? ` · ${failed} 步未成功` : working ? '' : ' · 已完成'}</small></span>
     {open ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}</button>
-    {open && <div className="tl-tool-group-body">{messages.map(message => <ToolRow key={message.id} message={message}/>)}</div>}
+    {open && <div className="tl-tool-group-body">{messages.map((message,index) => <ToolRow key={message.id} message={message} onOpenResource={onOpenResource} action={actions[index]}/>)}</div>}
   </div>
 }
 
@@ -188,14 +197,8 @@ function LoginAction({url, login}: {url: string; login: (url: string, finish: bo
   }}><LogIn size={15}/>{busy ? '正在处理…' : opened ? '我已登录，关闭窗口' : '打开登录窗口'}</button>{error && <p className="inline-error" role="alert">{error}</p>}</div>
 }
 
-export function Timeline({ messages, onStartWatch, startedTasks, onRetry, onLogin }: TimelineProps) {
-  if (messages.length === 0) {
-    return (
-      <div className="tl-empty">
-        <span>对话会在这里出现</span>
-      </div>
-    )
-  }
+export function Timeline({ messages, onStartWatch, startedTasks, onRetry, onLogin,onOpenResource,renderToolAction }: TimelineProps) {
+  if (messages.length === 0) return null
 
   const groups: DialogueMessage[][] = []
   for (const message of messages.filter(m => !m.rendered_by_stream)) {
@@ -207,7 +210,7 @@ export function Timeline({ messages, onStartWatch, startedTasks, onRetry, onLogi
   return <div className="tl-root" role="log" aria-label="对话时间线" aria-live="polite">
     {groups.map(group => {
       const message = group[0]
-      if (message.role === 'tool') return <ToolGroup key={message.id} messages={group}/>
+      if (message.role === 'tool') return <ToolGroup key={message.id} messages={group} onOpenResource={onOpenResource} renderToolAction={renderToolAction}/>
       if (message.role === 'user') {userText = message.text; return <UserBubble key={message.id} message={message}/>}
       const retryText = userText
       return <div key={message.id} className="tl-agent-block">

@@ -74,7 +74,7 @@ def test_watch_start_pause_edit_resume_event_and_archive(platform_page):
     page.get_by_role("button", name="恢复", exact=True).click()
     expect(page.get_by_role("button", name="暂停", exact=True)).to_be_visible()
     # The UI route is now unrelated to Watch; the worker and OS events still run.
-    page.get_by_role("button", name="Computer", exact=True).click()
+    page.get_by_role("button", name="Agent 对话", exact=True).click()
     target.write_text("READY")
     page.get_by_role("button", name="Tasks", exact=True).click()
     page.get_by_role("button", name="通知", exact=False).click()
@@ -94,7 +94,11 @@ def test_platform_routes_responsive_accessible_and_module_independence(platform_
         for route in ("computer", "watch", "tasks", "devices", "settings"):
             page.goto(base + "#" + route)
             heading = {"computer":"电脑控制", "watch":"驻守任务", "tasks":"任务与记录", "devices":"设备与连接", "settings":"设置"}[route]
-            expect(page.get_by_role("heading", name=heading, exact=True)).to_be_visible()
+            if route == "computer":
+                expect(page.get_by_role("complementary", name="任务工作区", exact=True)).to_be_visible()
+                expect(page.get_by_label("给 Agent 的消息", exact=True)).to_be_visible()
+            else:
+                expect(page.get_by_role("heading", name=heading, exact=True)).to_be_visible()
             page.wait_for_function("document.getAnimations().every(a=>a.constructor.name!=='CSSTransition'||a.playState!=='running')")
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
             page.add_script_tag(path=str(ROOT / "apps/pulse/node_modules/axe-core/axe.min.js"))
@@ -110,7 +114,11 @@ def test_platform_routes_responsive_accessible_and_module_independence(platform_
         for route in ("computer", "watch", "tasks", "devices", "settings"):
             page.goto(base + "#" + route)
             heading = {"computer":"电脑控制", "watch":"驻守任务", "tasks":"任务与记录", "devices":"设备与连接", "settings":"设置"}[route]
-            expect(page.get_by_role("heading", name=heading, exact=True)).to_be_visible()
+            if route == "computer":
+                expect(page.get_by_role("complementary", name="任务工作区", exact=True)).to_be_visible()
+                expect(page.get_by_label("给 Agent 的消息", exact=True)).to_be_visible()
+            else:
+                expect(page.get_by_role("heading", name=heading, exact=True)).to_be_visible()
             page.wait_for_function("document.getAnimations().every(a=>a.constructor.name!=='CSSTransition'||a.playState!=='running')")
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
             page.add_script_tag(path=str(ROOT / "apps/pulse/node_modules/axe-core/axe.min.js"))

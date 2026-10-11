@@ -1,0 +1,76 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Morning · 任务工作区验收</title><style>body{max-width:1080px;margin:56px auto;padding:0 26px;background:#f7f6f2;color:#2c302a;font:15px/1.8 system-ui}h1{font-size:32px}h2{font-size:20px;margin-bottom:6px}section{padding:20px 0;border-top:1px solid #ddd}.status{color:#657c60}.warning{padding:15px;background:#fff0dc}pre{white-space:pre-wrap;font-size:12px;overflow-wrap:anywhere}img{width:100%;border:1px solid #dedbd3;border-radius:12px}a{color:#71533a}details{margin:12px 0}code{background:#eeede7;padding:3px 5px}</style><h1>Morning · 任务工作区验收</h1><p>2026-10-11 · 本地代码与真实运行证据。电脑完整操作链路仍有上游兼容阻碍。</p><p>789 项后端、83 项界面、11 项 Node 回归通过。两个真实 Pi Agent 重叠执行约 30 秒；单会话两次原生 bash 工具调用重叠约 3 秒。</p><section><h2>Agent → 原生会话 → 并发与恢复</h2><p class="status">限定场景已验证</p><ul><li>每个已载入会话拥有独立 Pi 原生运行时，保留工具、扩展、上下文、历史和消息队列</li><li>切换页面不会中止其他会话；按会话停止；默认载入上限 4，可设置 2–8</li><li>浏览器标签页绑定会话，草稿按会话保存，迟到响应不覆盖另一段会话</li><li>空会话重启保留模型与思考深度；有对话的会话沿用 Pi JSONL，不修改原生保存语义</li></ul><details><summary>修改文件与边界</summary><pre>{
+  &quot;area&quot;: &quot;Agent → 原生会话 → 并发与恢复&quot;,
+  &quot;status&quot;: &quot;限定场景已验证&quot;,
+  &quot;files&quot;: [
+    &quot;packages/wakecore/src/wakecore/app/pulse/native_sessions.py&quot;,
+    &quot;packages/wakecore/src/wakecore/adapters/agent_runtime/native.py&quot;,
+    &quot;apps/agent-runtime/native-bootstrap.mjs&quot;
+  ],
+  &quot;implemented&quot;: [
+    &quot;每个已载入会话拥有独立 Pi 原生运行时，保留工具、扩展、上下文、历史和消息队列&quot;,
+    &quot;切换页面不会中止其他会话；按会话停止；默认载入上限 4，可设置 2–8&quot;,
+    &quot;浏览器标签页绑定会话，草稿按会话保存，迟到响应不覆盖另一段会话&quot;,
+    &quot;空会话重启保留模型与思考深度；有对话的会话沿用 Pi JSONL，不修改原生保存语义&quot;
+  ],
+  &quot;native_retained&quot;: &quot;Pi 默认的 parallel 工具调度不变；不另外建立 Agent loop。&quot;
+}</pre></details></section><section><h2>任务 → 终端 / 网页 → 生命周期</h2><p class="status">本地 macOS 闭环已验证</p><ul><li>node-pty 承担 PTY；xterm.js 承担终端显示、输入、尺寸适配和链接</li><li>多个真实终端并行，关闭面板不停止进程；停止一个不影响另一个</li><li>启动和输入请求去重，输出有界，断线按位置续读，重启不重放命令</li><li>真实本地 HTTP 服务可从终端链接进入任务旁预览</li><li>新增能力通过 morning_terminal / morning_preview 原生扩展工具供 Pi 调用</li></ul><details><summary>修改文件与边界</summary><pre>{
+  &quot;area&quot;: &quot;任务 → 终端 / 网页 → 生命周期&quot;,
+  &quot;status&quot;: &quot;本地 macOS 闭环已验证&quot;,
+  &quot;files&quot;: [
+    &quot;apps/agent-runtime/terminal-worker.mjs&quot;,
+    &quot;packages/wakecore/src/wakecore/app/pulse/workspace.py&quot;,
+    &quot;apps/pulse/src/TerminalPane.tsx&quot;,
+    &quot;apps/pulse/src/PreviewPane.tsx&quot;,
+    &quot;apps/pulse/src/WorkArea.tsx&quot;
+  ],
+  &quot;implemented&quot;: [
+    &quot;node-pty 承担 PTY；xterm.js 承担终端显示、输入、尺寸适配和链接&quot;,
+    &quot;多个真实终端并行，关闭面板不停止进程；停止一个不影响另一个&quot;,
+    &quot;启动和输入请求去重，输出有界，断线按位置续读，重启不重放命令&quot;,
+    &quot;真实本地 HTTP 服务可从终端链接进入任务旁预览&quot;,
+    &quot;新增能力通过 morning_terminal / morning_preview 原生扩展工具供 Pi 调用&quot;
+  ],
+  &quot;limits&quot;: [
+    &quot;目前应用适配层只开放 POSIX 终端；Windows、远程 PTY 未验收&quot;,
+    &quot;第三方页面可能禁止 iframe；保留新标签入口，不伪报页面加载成功&quot;
+  ]
+}</pre></details></section><section><h2>Computer → 对话步骤 → 授权 / 排队 / 核验</h2><p class="status">部分实现，真实操作验收未通过</p><ul><li>电脑预览与批准放入原任务流程，移除独立 Computer 导航入口</li><li>观察按应用与观察 ID 分离；同一设备的操作排队，其他 Agent 和终端继续</li><li>高编号文件描述符下的真实节点启动已验证；启动等待有时限并清理资源</li><li>上游返回局部变化摘要时明确阻止操作，禁止当作完整观察</li></ul> <p class="warning">当前 codex-computer-use-mcp 0.5.2 / 官方客户端 1001425 在请求完整观察时仍返回 unchanged/diff 摘要；官方 get_app_state schema 当前只声明 app 参数。需要上游完整观察兼容支持，再验收真实点击、重新观察和自动续接。没有将按钮申请或截图当作操作完成。</p><details><summary>修改文件与边界</summary><pre>{
+  &quot;area&quot;: &quot;Computer → 对话步骤 → 授权 / 排队 / 核验&quot;,
+  &quot;status&quot;: &quot;部分实现，真实操作验收未通过&quot;,
+  &quot;files&quot;: [
+    &quot;apps/pulse/src/ComputerInspector.tsx&quot;,
+    &quot;packages/wakecore/src/wakecore/app/pulse/platform.py&quot;,
+    &quot;packages/wakecore/src/wakecore/app/pulse/devices.py&quot;,
+    &quot;packages/wakecore-ui-runtime/src/wakecore_ui_runtime/desktop/tree.py&quot;,
+    &quot;packages/wakecore-ui-runtime/src/wakecore_ui_runtime/desktop/node.py&quot;
+  ],
+  &quot;implemented&quot;: [
+    &quot;电脑预览与批准放入原任务流程，移除独立 Computer 导航入口&quot;,
+    &quot;观察按应用与观察 ID 分离；同一设备的操作排队，其他 Agent 和终端继续&quot;,
+    &quot;高编号文件描述符下的真实节点启动已验证；启动等待有时限并清理资源&quot;,
+    &quot;上游返回局部变化摘要时明确阻止操作，禁止当作完整观察&quot;
+  ],
+  &quot;blocker&quot;: &quot;当前 codex-computer-use-mcp 0.5.2 / 官方客户端 1001425 在请求完整观察时仍返回 unchanged/diff 摘要；官方 get_app_state schema 当前只声明 app 参数。需要上游完整观察兼容支持，再验收真实点击、重新观察和自动续接。没有将按钮申请或截图当作操作完成。&quot;
+}</pre></details></section><section><h2>Web Console → 信息层级 → 去除常驻解释</h2><p class="status">已实现并检查实际页面</p><ul><li>移除 Pi 原生会话 / 自动保存 / Enter 发送 / Shift+Enter 换行常驻页脚</li><li>移除预览并行说明、终端收起说明、导航与分类重复标题、Pulse 宣传式说明、空状态长篇解释</li><li>参数帮助使用原生 details 按需展开；保留实际错误、等待条件、授权范围和运行状态</li><li>暖白紧凑布局，工作区收起动画、移动端底部工作区与键盘入口保持可用</li></ul><details><summary>修改文件与边界</summary><pre>{
+  &quot;area&quot;: &quot;Web Console → 信息层级 → 去除常驻解释&quot;,
+  &quot;status&quot;: &quot;已实现并检查实际页面&quot;,
+  &quot;files&quot;: [
+    &quot;apps/pulse/src/App.tsx&quot;,
+    &quot;apps/pulse/src/Settings.tsx&quot;,
+    &quot;apps/pulse/src/NativePreferences.tsx&quot;,
+    &quot;apps/pulse/src/FieldHelp.tsx&quot;,
+    &quot;apps/pulse/src/StatusBar.tsx&quot;,
+    &quot;apps/pulse/src/Gateways.tsx&quot;,
+    &quot;apps/pulse/src/NativePi.tsx&quot;
+  ],
+  &quot;implemented&quot;: [
+    &quot;移除 Pi 原生会话 / 自动保存 / Enter 发送 / Shift+Enter 换行常驻页脚&quot;,
+    &quot;移除预览并行说明、终端收起说明、导航与分类重复标题、Pulse 宣传式说明、空状态长篇解释&quot;,
+    &quot;参数帮助使用原生 details 按需展开；保留实际错误、等待条件、授权范围和运行状态&quot;,
+    &quot;暖白紧凑布局，工作区收起动画、移动端底部工作区与键盘入口保持可用&quot;
+  ]
+}</pre></details></section><section><h2>成熟模块复用</h2><ul><li><a href="https://github.com/earendil-works/pi">Pi coding agent</a> 0.99.1 · MIT — Agent 核心、原生并行工具、会话格式、认证与扩展</li><li><a href="https://github.com/microsoft/node-pty">node-pty</a> 1.1.0 · MIT — 取代自建 Python PTY 启动器；修复 npm macOS helper 缺少可执行位的安装兼容问题</li><li><a href="https://github.com/xtermjs/xterm.js">xterm.js</a> 6.0.0 · MIT — 终端组件，复用 Fit 0.11.0 / WebLinks 0.12.0 addons</li><li><a href="https://github.com/tmustier/codex-computer-use-mcp">codex-computer-use-mcp</a> 0.5.2 · MIT — 保留已有电脑执行桥接；完整窗口响应兼容性仍是依赖</li><li><a href="https://github.com/xiaoheoxo/Pixel-Starry-Sky-Desktop">Pixel-Starry-Sky-Desktop</a>  · 未确认源码许可 — 仅参考任务旁终端与工作区组织；本地参考源码未发现许可文件，没有移植其源码</li></ul></section><section><h2>实际界面</h2><img src="task-workspace-chat.png" alt="清理常驻说明后的真实聊天界面"><img src="task-workspace-settings.png" alt="解释按需展开的设置"><img src="task-workspace-preview.png" alt="真实终端 HTTP 服务在任务旁的预览"></section><section><h2>复现与结果</h2><pre>.venv/bin/python -m pytest tests --ignore=tests/ui -q
+.venv/bin/python -m pytest tests/ui -q
+npm --prefix apps/agent-runtime test
+npm --prefix apps/pulse run build
+.venv/bin/python scripts/verify_task_workspace.py --output /tmp/morning-live-proof.json</pre><p><a href="2026-10-11-task-workspace-verification.json">完整验收数据与边界</a></p></section></html>

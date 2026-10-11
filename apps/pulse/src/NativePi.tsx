@@ -5,10 +5,11 @@ import {Dialog} from './Dialog'
 import {Disclosure} from './Motion'
 import {Markdown} from './Markdown'
 import type {PiInteraction, PiModel, PiSnapshot} from './types'
+import {setPiSessionId} from './session-context'
 
-export const piCommand = <T,>(command: string, params: Record<string, unknown> = {}) => api<T>('/pulse/pi', {command, params})
+export const piCommand = async<T,>(command: string, params: Record<string, unknown> = {}) => {const result=await api<T&{sessionId?:string}>('/pulse/pi',{command,params});if(['new_session','switch_session','fork','clone'].includes(command)&&result.sessionId)setPiSessionId(result.sessionId);return result}
 export const piControl = <T,>(command: string, params: Record<string, unknown> = {}) => api<T>('/pulse/pi/control', {command, params})
-export type PiSession = {id:string; path:string; cwd:string; name?:string; firstMessage:string; modified:string; messageCount:number}
+export type PiSession = {id:string; path:string; cwd:string; name?:string; firstMessage:string; modified:string; messageCount:number;running?:boolean;attention?:boolean;loaded?:boolean}
 type Resource = {name:string; description?:string; filePath?:string; path?:string}
 type Resources = {skills:Resource[]; prompts:Resource[]; extensions:Resource[]; context_files:Resource[]; tools:Resource[]; active_tools:string[]; callable_tools:string[]; diagnostics:{message:string; path?:string}[]; packages?:{source:string; scope:string}[]}
 type TreeNode = {entry:{id:string; type:string; message?:{role:string; content?:string | {type:string; text?:string}[]}}; children:TreeNode[]; label?:string}
@@ -63,13 +64,13 @@ export function NativePanel({pi, close, refresh, onInsert, onSession, initialTab
       {feedback && <p className="support-copy" role="status">{feedback}</p>}
       {busy && <p className="pi-progress" role="status"><LoaderCircle size={14}/>{busy === 'login' ? '正在进行 Pi 原生认证…' : busy === 'compact' ? '正在整理上下文…' : '正在处理…'}</p>}
       {tab === 'sessions' && <>
-        <div className="section-heading"><p className="support-copy">继续之前的工作，或从独立的上下文开始。</p><button className="secondary-button" disabled={!!busy || pi.state?.isStreaming} onClick={() => void changeSession('new_session')}><Plus size={14}/>新建会话</button></div>
+        <div className="section-heading"><button className="secondary-button" disabled={!!busy} onClick={() => void changeSession('new_session')}><Plus size={14}/>新建会话</button></div>
         {pi.agent_ready && <form className="pi-name-form" onSubmit={e => {e.preventDefault(); void run('name', async () => {await piCommand('set_session_name', {name}); await load()})}}>
           <label className="field-label">当前会话名称<input value={name} onChange={e => setName(e.target.value)} placeholder="给这段工作一个名字"/></label><button className="secondary-button" disabled={!!busy || !name.trim()}>保存名称</button></form>}
-        <div className="pi-session-list">{sessions.map(session => <button className={`pi-session ${session.id === pi.state?.sessionId ? 'selected' : ''}`} key={session.path} disabled={!!busy || pi.state?.isStreaming} onClick={() => void changeSession('switch_session', {sessionPath:session.path})}>
+        <div className="pi-session-list">{sessions.map(session => <button className={`pi-session ${session.id === pi.state?.sessionId ? 'selected' : ''}`} key={session.path||session.id} disabled={!!busy} onClick={() => void changeSession('switch_session', {sessionPath:session.path,sessionId:session.id})}>
           <div><strong>{session.name || session.firstMessage?.slice(0, 65) || '未命名会话'}</strong><span>{session.messageCount} 条消息 · {new Date(session.modified).toLocaleString('zh-CN', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span><small>{session.cwd}</small></div>
           {session.id === pi.state?.sessionId ? <Check size={16}/> : <ChevronRight size={16}/>}</button>)}</div>
-        {!sessions.length && !busy && <p className="pi-empty">还没有保存的会话。发送第一条消息后，Pi 会自动保存。</p>}
+        {!sessions.length && !busy && <p className="pi-empty">暂无历史会话</p>}
         {pi.agent_ready && <Disclosure title={<> 分支与导出 </>}>
           <div className="pi-button-row"><button className="secondary-button" disabled={!!busy || pi.state?.isStreaming} onClick={() => void changeSession('clone')}><GitBranch size={14}/>复制为新分支</button>
             <button className="secondary-button" disabled={!!busy || pi.state?.isStreaming} onClick={() => void run('forks', async () => setForks((await piCommand<{messages:{entryId:string; text:string}[]}>('get_fork_messages')).messages))}>从历史消息分支</button>
@@ -99,26 +100,26 @@ export function NativePanel({pi, close, refresh, onInsert, onSession, initialTab
         </>}
       </>}
       {tab === 'resources' && resources && <>
-        <div className="section-heading"><p className="support-copy">直接使用 Pi 发现的 Skills、提示词、扩展和 MCP 工具。</p><button className="secondary-button" disabled={!!busy || pi.state?.isStreaming} onClick={() => void run('reload', async () => {setResources(await piControl<Resources>('reload')); await load()})}><RefreshCw size={14}/>重新加载</button></div>
+        <div className="section-heading"><button className="secondary-button" disabled={!!busy || pi.state?.isStreaming} onClick={() => void run('reload', async () => {setResources(await piControl<Resources>('reload')); await load()})}><RefreshCw size={14}/>重新加载</button></div>
         <input aria-label="搜索能力" placeholder="搜索命令、Skills 或提示词…" value={query} onChange={e => setQuery(e.target.value)}/>
         <div className="pi-command-list">{commands.filter(command => `${command.name} ${command.description}`.toLowerCase().includes(query.toLowerCase())).map(command => <button className="pi-command" key={`${command.source}-${command.name}`} onClick={() => {onInsert(`/${command.name} `); close()}}>
           <span><strong>/{command.name}</strong><small>{command.description || command.source}</small></span><ChevronRight size={14}/></button>)}</div>
-        {!commands.length && <p className="pi-empty">还没有自定义命令。Pi 会自动发现用户目录和受信任工作区中的能力。</p>}
+        {!commands.length && <p className="pi-empty">暂无自定义命令</p>}
         <Disclosure title={<> 工具 · {resources.tools.length} 项 </>}>{resources.tools.map(tool => <label className="pi-check" key={tool.name}><input type="checkbox" checked={resources.active_tools.includes(tool.name)} disabled={!!busy || pi.state?.isStreaming} onChange={e => void run('tools', async () => setResources(await piControl<Resources>('set_tools', {names:e.target.checked ? [...resources.active_tools, tool.name] : resources.active_tools.filter(name => name !== tool.name)})))}/><span>{tool.name}<small>{tool.description}</small></span></label>)}</Disclosure>
         {[{title:'Skills', rows:resources.skills}, {title:'提示词', rows:resources.prompts}, {title:'扩展', rows:resources.extensions}, {title:'工作区说明', rows:resources.context_files}].map(group => <Disclosure key={group.title} title={<> {group.title} · {group.rows.length} </>}>{group.rows.map((item, index) => <p className="pi-resource" key={index}><strong>{item.name}</strong><span>{item.description}</span><code>{item.path || item.filePath}</code></p>)}</Disclosure>)}
         {!!resources.diagnostics.length && <Disclosure title={<> 加载诊断 · {resources.diagnostics.length} </>}>{resources.diagnostics.map((diagnostic, index) => <p className="support-copy" key={index}>{diagnostic.message}<code>{diagnostic.path}</code></p>)}</Disclosure>}
         <Disclosure title={<> 管理 Pi 扩展包 </>}>
-          <p className="support-copy">使用 Pi 原生包管理器安装或移除 Skills、扩展和提示词。来源支持 npm、Git 和本地路径；扩展包可以执行代码。</p>
+          <p className="support-copy">扩展包可以执行代码，请确认来源可信。</p>
           <form onSubmit={e => {e.preventDefault(); void run('package', async () => {setResources(await piControl<Resources>('package', {action:'install', source:packageSource, local:packageLocal})); setPackageSource(''); await load()})}}>
             <label className="field-label">包来源<input value={packageSource} onChange={e => setPackageSource(e.target.value)} required/></label>
             <label className="pi-check"><input type="checkbox" checked={packageLocal} onChange={e => setPackageLocal(e.target.checked)}/>仅用于当前工作区</label>
             <button className="secondary-button" disabled={!!busy || !!pi.state?.isStreaming}>安装并加载</button></form>
           {resources.packages?.map(item => <div className="pi-package" key={`${item.scope}:${item.source}`}><span><code>{item.source}</code><small>{item.scope === 'project' ? '工作区' : '用户目录'}</small></span><button className="text-button" disabled={!!busy || !!pi.state?.isStreaming} onClick={() => void run('package', async () => {setResources(await piControl<Resources>('package', {action:'update', source:item.source})); await load()})}>更新</button><button className="danger-link" disabled={!!busy || !!pi.state?.isStreaming} onClick={() => void run('package', async () => {setResources(await piControl<Resources>('package', {action:'remove', source:item.source, local:item.scope === 'project'})); await load()})}>移除</button></div>)}
         </Disclosure>
-        <p className="pi-footnote">Pi 的选择、确认、输入和文本组件可在这里交互。仅面向终端的自定义绘制与快捷键，由 Pi 的 RPC 模式限制，无法在网页中呈现。</p>
+
       </>}
       {tab === 'auth' && <>
-        <p className="support-copy">使用 Pi 自带的提供方认证流程。Gateway 的地址和 Token 在设置里的「模型网关」管理。</p>
+
         <label className="field-label">提供方<select value={provider} onChange={e => setProvider(e.target.value)}>{providers.map(item => <option key={item.id} value={item.id}>{item.name} {item.status.configured ? '· 已配置' : ''}</option>)}</select></label>
         <div className="pi-button-row">{selectedProvider?.api_key && <button className="secondary-button" disabled={!!busy} onClick={() => void run('login', async () => {await piControl('auth_login', {provider, authType:'api_key'}); await load()})}>配置 API Key</button>}
           {selectedProvider?.oauth && <button className="primary-button" disabled={!!busy} onClick={() => void run('login', async () => {await piControl('auth_login', {provider, authType:'oauth'}); await load()})}>账户登录</button>}
@@ -128,7 +129,7 @@ export function NativePanel({pi, close, refresh, onInsert, onSession, initialTab
       </>}
     </div>
   </>
-  return embedded ? <div className="pi-panel-embedded">{content}</div> : <Dialog title="Agent 工作空间" close={close} wide eyebrow="POWERED BY PI">{content}</Dialog>
+  return embedded ? <div className="pi-panel-embedded">{content}</div> : <Dialog title="Agent 工作空间" close={close} wide>{content}</Dialog>
 }
 
 function SessionTree({nodes, select, busy}: {nodes:TreeNode[]; select:(id:string) => void; busy:boolean}) {

@@ -166,14 +166,14 @@ export function StatusBar({ watch, now, connectionError, notice, onSettings, onR
         {/* One shared activity surface; details retain their existing backend actions. */}
         {shown && <div ref={panelRef} id="pulse-panel" className="pulse-panel" inert={!expanded} aria-hidden={!expanded} style={{opacity:0,visibility:'hidden',transformOrigin:'top right'}}>
           <div ref={panelContent} className="pulse-panel-content">
-          <header className="pulse-panel-heading"><span className="pulse-panel-emblem"><Activity size={16}/></span><div><strong>后台活动</strong><span>{watches.length?`${watches.length} 项驻守 · ${activeCount} 项运行中`:'随时准备响应变化'}</span></div><button className="icon-button" aria-label="收起后台活动" onClick={()=>hide(true)}><X size={14}/></button></header>
-          {agentWorking&&<a className="pulse-agent-activity" href="#chat" onClick={()=>hide()}><span className="activity-running-dot"/><span>Agent 正在处理<small>查看对话中的执行过程</small></span><ArrowUpRight size={13}/></a>}
+          <header className="pulse-panel-heading"><span className="pulse-panel-emblem"><Activity size={16}/></span><div><strong>后台活动</strong>{!!watches.length&&<span>{watches.length} 项驻守 · {activeCount} 项运行中</span>}</div><button className="icon-button" aria-label="收起后台活动" onClick={()=>hide(true)}><X size={14}/></button></header>
+          {agentWorking&&<a className="pulse-agent-activity" href="#chat" onClick={()=>hide()}><span className="activity-running-dot"/><span>Agent 正在处理</span><ArrowUpRight size={13}/></a>}
           {watches.length>1&&<div className="pulse-watch-switcher" aria-label="选择驻守">{watches.map(item=><button key={item.task_id} className={item.task_id===watch?.task_id?'selected':''} onClick={()=>onSelectWatch?.(item.task_id)}><span className={`nav-dot ${item.state}`}/><span>{item.label}</span><small>{stateNames[item.state]||item.state}</small></button>)}</div>}
 
         {shown && computer && <div id="status-bar-body" className="status-bar-body" role="region" aria-label="电脑状态"><div className="sb-title">{computer.state==='approval'?'电脑操作等待你确认':'电脑操作需要查看'}</div><p className="sb-copy">{computer.text}</p><div className="sb-actions"><button onClick={()=>{computer.open();hide()}}>查看操作<ArrowUpRight size={13}/></button></div></div>}
         {shown && !computer && !watch && <div id="status-bar-body" className="status-bar-body" role="region" aria-label="Pulse 详情">
-          <div className="sb-title">{connectionError ? '本地服务连接中断' : agentWorking ? '正在处理你的消息' : '与外界保持连接'}</div>
-          <p className="sb-copy">{connectionError ? '当前显示的是已保存的记录。恢复连接后，状态会自动更新。' : agentWorking ? '执行进度会出现在对话中。' : '需要持续关注变化时，直接在对话中告诉 Morning。驻守状态会集中出现在这里。'}</p>
+          <div className="sb-title">{connectionError ? '本地服务连接中断' : agentWorking ? '正在处理你的消息' : '暂无后台任务'}</div>
+
           {connectionError && <div className="sb-actions"><button onClick={onReconnect}><RotateCw size={13}/>重新连接</button></div>}
         </div>}
         {shown && !computer && watch && (

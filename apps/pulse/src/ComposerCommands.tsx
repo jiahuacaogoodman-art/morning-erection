@@ -83,7 +83,7 @@ export function useComposerCommands({pi,thinking,text,setText,input}:{pi:PiSnaps
       {(loading||thinking.loading&&levelMode)&&<p className="command-notice"><LoaderCircle size={12}/>正在读取 Pi 选项…</p>}
       {!loading&&!items.length&&<p className="command-notice">{levelMode?'没有匹配的思考档位':'没有匹配的命令，可继续输入并发送给 Pi。'}</p>}
       {(error||levelMode&&thinking.error)&&<div className="thinking-error" role="alert">{error||thinking.error}{error&&<button type="button" onClick={()=>setReload(value=>value+1)}>重新读取</button>}</div>}
-      <footer><span><kbd>{levelMode?'←':'↑'}</kbd><kbd>{levelMode?'→':'↓'}</kbd>选择</span><span><kbd>↵</kbd>{levelMode?'应用档位':'选择'}</span>{levelMode&&<span>只更改设置，不发送消息</span>}</footer>
+      <footer><span><kbd>{levelMode?'←':'↑'}</kbd><kbd>{levelMode?'→':'↓'}</kbd>选择</span><span><kbd>↵</kbd>{levelMode?'应用档位':'选择'}</span></footer>
     </div>:null
   }
 }

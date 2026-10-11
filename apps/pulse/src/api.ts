@@ -4,7 +4,7 @@ export class ApiError extends Error {
 export async function api<T>(path: string, body?: unknown, signal?: AbortSignal, key?: string): Promise<T> {
   const options: RequestInit = {method: body === undefined ? 'GET' : 'POST',
     credentials: 'same-origin', cache: 'no-store', signal,
-    headers: body === undefined ? {} : {'Content-Type': 'application/json', 'X-Pulse-Client': '1', 'Idempotency-Key': key || crypto.randomUUID()},
+    headers: {...(getPiSessionId()?{'X-Morning-Session':getPiSessionId()!}:{}),...(body === undefined ? {} : {'Content-Type': 'application/json', 'X-Pulse-Client': '1', 'Idempotency-Key': key || crypto.randomUUID()})},
     body: body === undefined ? undefined : JSON.stringify(body)}
   let response = await fetch('/api' + path, options)
   if (response.status === 401 && path !== '/bootstrap') {
@@ -15,3 +15,4 @@ export async function api<T>(path: string, body?: unknown, signal?: AbortSignal,
   if (!response.ok) throw new ApiError(value.error?.message || '连接暂时不可用', response.status, value.error?.code || 'CONNECTION')
   return value as T
 }
+import {getPiSessionId} from './session-context'
