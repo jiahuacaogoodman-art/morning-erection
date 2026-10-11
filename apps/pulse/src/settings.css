@@ -1,0 +1,109 @@
+/* settings */
+.settings-nav {
+  margin-top: auto; display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 9px;
+  border-radius: var(--r-md); font-size: 13px; color: var(--ink-secondary); text-align: left;
+}
+.settings-nav:hover {background: var(--surface-hover); color: var(--ink)}
+.settings-nav.selected {background: var(--surface); color: var(--ink); font-weight: 500; box-shadow: var(--shadow-sm)}
+.settings-nav + .sidebar-foot {margin-top: 6px}
+.settings-scroll {padding-top: 36px}
+.settings-view {width: 100%; max-width: var(--chat-max); margin: 0 auto; display: flex; flex-direction: column; gap: 30px; padding-bottom: 48px}
+.settings-head {display: flex; flex-direction: column; gap: 6px}
+.settings-head h1 {margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -.02em}
+.settings-head p {margin: 0; font-size: 13px; line-height: 1.6; color: var(--ink-tertiary)}
+.settings-group {display: flex; flex-direction: column; gap: 6px}
+.settings-group h2 {margin: 0; font-size: 13px; font-weight: 600; color: var(--ink)}
+.settings-hint {margin: 0 0 4px; font-size: 12px; line-height: 1.6; color: var(--ink-tertiary)}
+.settings-rows {display: flex; flex-direction: column; border-top: 1px solid var(--line-light)}
+.settings-row {display: flex; align-items: center; gap: 16px; min-height: 52px; padding: 10px 0; border-bottom: 1px solid var(--line-light)}
+.settings-row-text {flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px}
+.settings-row-label {font-size: 13px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap}
+.settings-row-hint {font-size: 12px; line-height: 1.5; color: var(--ink-tertiary)}
+.settings-row-control {flex-shrink: 0; display: flex; align-items: center; gap: 8px}
+.settings-muted-icon {color: var(--ink-faint)}
+
+.segmented {display: inline-flex; padding: 2px; gap: 2px; border-radius: var(--r-lg); background: var(--surface-hover)}
+.segmented button {display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: var(--r-md); font-size: 12px; color: var(--ink-secondary)}
+.segmented button:hover {color: var(--ink)}
+.segmented button.selected {background: var(--surface); color: var(--ink); font-weight: 500; box-shadow: var(--shadow-sm)}
+
+.switch {position: relative; flex-shrink: 0; width: 36px; height: 21px; padding: 0; border-radius: var(--r-pill); background: var(--line-heavy); transition: background .18s var(--ease-move)}
+.switch[aria-checked="true"] {background: var(--accent-bright)}
+.switch:disabled {opacity: .45; cursor: default}
+.switch-knob {position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px #00000033; transition: transform .18s var(--ease-move)}
+.switch[aria-checked="true"] .switch-knob {transform: translateX(15px)}
+.switch:focus-visible, .segmented button:focus-visible, .settings-nav:focus-visible {outline: 2px solid var(--focus); outline-offset: 2px}
+
+.settings-cadence {display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line-light)}
+.settings-cadence .secondary-button {height: 38px}
+.settings-saved {margin: 4px 0 0; font-size: 12px; color: var(--success)}
+.inline-error {margin: 4px 0 0; font-size: 12px; line-height: 1.5; color: var(--danger)}
+
+.settings-facts {margin: 0; display: flex; flex-direction: column; border-top: 1px solid var(--line-light)}
+.settings-fact {display: grid; grid-template-columns: 110px 1fr; gap: 12px; align-items: center; min-height: 42px; padding: 8px 0; border-bottom: 1px solid var(--line-light)}
+.settings-fact dt {font-size: 12px; color: var(--ink-tertiary)}
+.settings-fact dd {margin: 0; font-size: 13px; color: var(--ink); min-width: 0; overflow-wrap: anywhere}
+.settings-fact code {font: 12px/1.5 var(--mono); color: var(--ink-secondary)}
+.settings-status {display: inline-flex; align-items: center; gap: 7px; color: var(--ink-secondary)}
+.settings-status-dot {width: 7px; height: 7px; border-radius: 50%; background: var(--line-heavy)}
+.settings-status.ok .settings-status-dot {background: var(--success)}
+
+/* ---------- settings · orb hue ---------- */
+.settings-hue {display: flex; align-items: center; gap: 10px}
+.settings-hue input[type="range"] {
+  --hue: 0;
+  appearance: none; width: 168px; height: 20px; background: none; cursor: pointer;
+}
+/* The track is a real colour wheel strip with a thumb sitting on the chosen hue, so the
+   control shows the colour it will apply instead of naming it. */
+.settings-hue input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px; border-radius: var(--r-pill); border: 1px solid var(--line-light);
+  background: linear-gradient(90deg, oklch(62% 0.12 0), oklch(62% 0.12 60), oklch(62% 0.12 120),
+    oklch(62% 0.12 180), oklch(62% 0.12 240), oklch(62% 0.12 300), oklch(62% 0.12 359));
+}
+.settings-hue input[type="range"]::-webkit-slider-thumb {
+  appearance: none; width: 16px; height: 16px; margin-top: -5px; border-radius: 50%;
+  background: oklch(62% 0.16 var(--hue)); border: 2px solid var(--surface); box-shadow: var(--shadow-sm);
+}
+.settings-hue input[type="range"]::-moz-range-track {
+  height: 8px; border-radius: var(--r-pill); border: 1px solid var(--line-light);
+  background: linear-gradient(90deg, oklch(62% 0.12 0), oklch(62% 0.12 60), oklch(62% 0.12 120),
+    oklch(62% 0.12 180), oklch(62% 0.12 240), oklch(62% 0.12 300), oklch(62% 0.12 359));
+}
+.settings-hue input[type="range"]::-moz-range-thumb {
+  width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--surface);
+  background: oklch(62% 0.16 var(--hue)); box-shadow: var(--shadow-sm);
+}
+.settings-hue input[type="range"]:focus-visible {outline: 2px solid var(--focus); outline-offset: 3px; border-radius: var(--r-pill)}
+.settings-hue .secondary-button.selected {color: var(--accent); border-color: var(--accent)}
+
+.settings-swatch-strip {display: flex; align-items: flex-start; gap: 14px}
+.settings-swatch {display: flex; flex-direction: column; align-items: center; gap: 5px}
+.settings-swatch small {font-size: 10px; color: var(--ink-faint); white-space: nowrap}
+
+/* ---------- settings · cadence chart ---------- */
+.cadence-chart {margin: 14px 0 0; display: flex; flex-direction: column; gap: 8px}
+.cadence-caption {display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 11px; color: var(--ink-tertiary)}
+.cadence-legend {display: inline-flex; align-items: center; gap: 6px}
+.cadence-swatch {width: 14px; height: 3px; border-radius: var(--r-pill); flex: none}
+.cadence-swatch.quiet {background: var(--accent-bright)}
+.cadence-swatch.error {background: var(--danger)}
+.cadence-swatch.reset {background: var(--ink-tertiary)}
+
+.cadence-chart svg {width: 100%; height: auto; overflow: visible}
+.cadence-grid {stroke: var(--line-light); stroke-width: 1; stroke-dasharray: 2 3}
+.cadence-axis {font: 10px var(--font); fill: var(--ink-faint)}
+.cadence-line {fill: none; stroke-width: 1.75; stroke-linejoin: round; stroke-linecap: round}
+.cadence-line.quiet {stroke: var(--accent-bright)}
+.cadence-line.error {stroke: var(--danger); stroke-dasharray: 4 3}
+.cadence-band {stroke: none}
+.cadence-band.quiet {fill: var(--accent-bright); fill-opacity: .1}
+.cadence-band.error {fill: var(--danger); fill-opacity: .07}
+.cadence-reset path {stroke: var(--ink-tertiary); stroke-width: 1; stroke-dasharray: 2 3}
+.cadence-reset circle {fill: var(--surface); stroke: var(--ink-tertiary); stroke-width: 1.5}
+.cadence-hit {fill: transparent}
+.cadence-dot {fill: var(--accent-bright); transition: r .12s var(--ease-move)}
+.cadence-node:focus-visible {outline: none}
+.cadence-node:focus-visible .cadence-dot {fill: var(--ink); r: 3.6}
+.cadence-readout {margin: 0; font-size: 12px; line-height: 1.6; color: var(--ink-tertiary)}
+.cadence-readout strong {color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums}

@@ -2,6 +2,7 @@
 
 Lock order: root runtime -> task runtime -> children (see kernel.locks).
 """
+from datetime import timedelta
 from typing import Any, Optional
 
 from .. import audit
@@ -33,16 +34,52 @@ from ..lifecycle import PAUSED_UNTIL, in_flight, set_lifecycle, terminate
 from ..locks import lock_task
 from ..policy.authority import check_grant, compute_effective_authority, scope_subset
 from ..repo import Repo
+from ..scheduling.adaptive import polling_policy
 
 
 def main_trigger_id(task_id: str) -> str:
     return f"trg:{task_id}:main"
 
 
+def check_now(repo: Repo, ctx: KernelContext, *, tenant_id: str, principal: str, task_id: str) -> dict[str, Any]:
+    """Explicit human check, queued through the existing trigger; never fetch under a lock."""
+    _, rt = lock_task(repo, tenant_id, task_id)
+    require_owner(repo, rt, principal)
+    now = repo.uow.db_now()
+    if rt.lifecycle is not TaskLifecycle.ACTIVE or rt.expires_at <= now:
+        raise TaskNotActive("resume an active, unexpired task before checking")
+    trg = repo.get(TriggerRecord, for_update=True, tenant_id=tenant_id, trigger_id=main_trigger_id(task_id))
+    if trg is None or trg.kind is not TriggerKind.INTERVAL:
+        raise InvalidTransition("manual checks require an interval watch")
+    binding = repo.get(SourceBinding, tenant_id=tenant_id, source_ref=rt.source_ref)
+    spec = load_spec(repo, rt)
+    if trg.reason and trg.reason.startswith("adaptive:http_") and trg.due_at and trg.due_at > now:
+        return {"queued": False, "reason": "server_backoff", "next_check_at": trg.due_at}
+    earliest = binding.last_attempt_at + timedelta(seconds=spec.limits.min_probe_interval_seconds) \
+        if binding and binding.last_attempt_at else now
+    if earliest > now:
+        return {"queued": False, "reason": "minimum_interval", "next_check_at": earliest}
+    live = repo.find(Step, {"tenant_id": tenant_id, "task_id": task_id, "kind": StepKind.PROBE},
+                     conds=[("status", "in", [StepStatus.READY, StepStatus.RUNNING])], limit=1)
+    if live:
+        return {"queued": False, "reason": "already_checking", "next_check_at": now}
+    repo.change(trg, status=TriggerStatus.ACTIVE, due_at=now, reason="manual_check", updated_at=now,
+                generation=trg.generation + (1 if trg.status is TriggerStatus.PAUSED else 0))
+    audit.record(repo, ctx.ids, tenant_id=tenant_id, kind="task.check_requested", actor=principal,
+                 subject_type="task", subject_id=task_id, task_id=task_id, root_task_id=rt.root_task_id)
+    return {"queued": True, "next_check_at": now}
+
+
 def scope_key_for(spec: TaskSpec) -> str:
     from ..domain.canonical import canonical_json
 
-    return f"{spec.task_id}:{short_hash(canonical_json(spec.source.resource_scope), length=12)}"
+    scope = spec.source.resource_scope
+    if spec.decision_profile in ("web_watch.v1", "semantic_watch.v1"):
+        # Cadence, presentation and action recipes are not observation identity. Changing
+        # them must not forget a trusted value and falsely produce another initial wake.
+        scope = {k: v for k, v in scope.items() if k not in {
+            "polling", "label", "pulse_field", "pulse_field_label", "condition_label", "action", "on_event", "session_path", "action_goal", "wake_model_binding"}}
+    return f"{spec.task_id}:{short_hash(canonical_json(scope), length=12)}"
 
 
 def load_spec(repo: Repo, rt: TaskRuntime, version: Optional[int] = None) -> TaskSpec:
@@ -81,6 +118,9 @@ def create_draft(repo: Repo, ctx: KernelContext, *, tenant_id: str, principal: s
         raise NotFound(f"source binding {spec.source.binding_ref}")
     if binding.owner != principal:
         raise PolicyDenied("source binding belongs to another principal")
+    connector = ctx.connectors.get(binding.connector_id)
+    polling_policy(spec.source.resource_scope, minimum=spec.limits.min_probe_interval_seconds,
+                   rate_limit=connector.descriptor.rate_limit_per_minute if connector else 0)
     if spec.expires_at <= now:
         raise TaskExpired("expires_at is in the past")
 
@@ -230,9 +270,19 @@ def _install_main_trigger(repo: Repo, rt: TaskRuntime, spec: TaskSpec, now, *, p
     due = now if spec.trigger.kind is TriggerKind.INTERVAL else spec.trigger.due_at
     status = TriggerStatus.PAUSED if paused else TriggerStatus.ACTIVE
     existing = repo.get(TriggerRecord, for_update=True, tenant_id=rt.tenant_id, trigger_id=tid)
+    reason = "configured"
+    if spec.decision_profile in ("web_watch.v1", "semantic_watch.v1") and spec.trigger.kind is TriggerKind.INTERVAL:
+        binding = repo.get(SourceBinding, tenant_id=rt.tenant_id, source_ref=rt.source_ref)
+        if binding and binding.last_attempt_at:
+            due = max(due, binding.last_attempt_at + timedelta(seconds=spec.limits.min_probe_interval_seconds))
+        if existing and existing.reason and existing.reason.startswith("adaptive:http_") and existing.due_at:
+            due = max(due, existing.due_at)
+            reason = existing.reason  # an explicit check cannot bypass a preserved server backoff
+        if existing and existing.reason == "adaptive:auth_required":
+            status, due, reason = TriggerStatus.PAUSED, None, existing.reason
     fields = dict(kind=spec.trigger.kind, every_seconds=spec.trigger.every_seconds, timezone=spec.trigger.timezone,
                   catchup_policy=spec.trigger.catchup_policy, due_at=due, expiry=spec.expires_at, status=status,
-                  reason="configured", updated_at=now)
+                  reason=reason, updated_at=now)
     if existing is not None:
         # Reconfiguration: old-generation work stays auditable but can no longer start.
         return repo.change(existing, generation=existing.generation + 1, **fields)
@@ -253,8 +303,10 @@ def pause(repo: Repo, ctx: KernelContext, *, tenant_id: str, principal: str, tas
     rt = set_lifecycle(repo, ctx.ids, rt, TaskLifecycle.PAUSED, actor=principal, reason="paused_by_user")
     now = repo.uow.db_now()
     key = {"tenant_id": tenant_id, "task_id": task_id}
+    web_watch = load_spec(repo, rt).decision_profile in ("web_watch.v1", "semantic_watch.v1")
     for t in repo.find(TriggerRecord, {**key, "status": TriggerStatus.ACTIVE}):
-        repo.change(t, status=TriggerStatus.PAUSED, reason="task_paused", updated_at=now)
+        reason = t.reason if web_watch and (t.reason or "").startswith("adaptive:http_") else "task_paused"
+        repo.change(t, status=TriggerStatus.PAUSED, reason=reason, updated_at=now)
     runs = set()
     for s in repo.find(Step, {**key, "status": StepStatus.READY}):
         if s.kind is StepKind.PROBE:  # a fresh probe is scheduled on resume
@@ -286,9 +338,13 @@ def resume(repo: Repo, ctx: KernelContext, *, tenant_id: str, principal: str, ta
         raise TaskNotActive("root task is not active")
     rt = set_lifecycle(repo, ctx.ids, rt, TaskLifecycle.ACTIVE, actor=principal, reason="resumed_by_user")
     key = {"tenant_id": tenant_id, "task_id": task_id}
+    web_watch = load_spec(repo, rt).decision_profile in ("web_watch.v1", "semantic_watch.v1")
     for t in repo.find(TriggerRecord, {**key, "status": TriggerStatus.PAUSED}):
+        if web_watch and t.reason in ("adaptive:auth_required", "adaptive:schema_invalid"):
+            continue
         # Missed slots are handled by the scheduler according to catchup_policy (RFC §6.3).
-        repo.change(t, status=TriggerStatus.ACTIVE, reason="task_resumed", updated_at=now)
+        reason = t.reason if web_watch and (t.reason or "").startswith("adaptive:http_") else "task_resumed"
+        repo.change(t, status=TriggerStatus.ACTIVE, reason=reason, updated_at=now)
     for s in repo.find(Step, {**key, "status": StepStatus.READY, "available_at": PAUSED_UNTIL}):
         repo.change(s, available_at=now, updated_at=now)
     return _control_result(repo, rt)

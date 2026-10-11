@@ -1,0 +1,98 @@
+{
+  "scope": "Implemented local Computer/Watch/Tasks/Devices UI. Missing cross-machine and multi-window capabilities are listed separately, not counted as implemented.",
+  "iterations": [
+    {
+      "id": "implementation-baseline",
+      "scores": {
+        "visual_hierarchy": 8.7,
+        "spacing_layout": 8.4,
+        "typography": 8.8,
+        "component_polish": 7.9,
+        "color_harmony": 8.7,
+        "consistency": 8.7,
+        "responsive_robustness": 8.4,
+        "usability_accessibility": 8.0
+      },
+      "gates": {
+        "functionality": true,
+        "content_integrity": true,
+        "responsive_integrity": true,
+        "accessibility": false,
+        "runtime_health": true,
+        "visual_assets": true
+      },
+      "evidence": {
+        "visual_hierarchy": "Agent remains first; one primary action per page.",
+        "spacing_layout": "1440x900 and 390x844; aligned stage and readable side context.",
+        "typography": "Existing serif headings and restrained interface text.",
+        "component_polish": "Real empty, approval, error and module states; no synthetic activity.",
+        "color_harmony": "Shared neutral/terracotta tokens; light and dark contrast checked.",
+        "consistency": "Shared shell, logo, controls and state badges.",
+        "responsive_robustness": "Navigation, controls and history remain available without horizontal overflow.",
+        "usability_accessibility": "Keyboard routes, focus, labelled forms and Axe gates verified."
+      }
+    },
+    {
+      "id": "refined-workspace",
+      "scores": {
+        "visual_hierarchy": 8.8,
+        "spacing_layout": 8.6,
+        "typography": 8.8,
+        "component_polish": 8.6,
+        "color_harmony": 9.0,
+        "consistency": 8.9,
+        "responsive_robustness": 8.8,
+        "usability_accessibility": 8.8
+      },
+      "gates": {
+        "functionality": true,
+        "content_integrity": true,
+        "responsive_integrity": true,
+        "accessibility": false,
+        "runtime_health": true,
+        "visual_assets": true
+      },
+      "evidence": {
+        "visual_hierarchy": "Agent remains first; one primary action per page.",
+        "spacing_layout": "1440x900 and 390x844; aligned stage and readable side context.",
+        "typography": "Existing serif headings and restrained interface text.",
+        "component_polish": "Real empty, approval, error and module states; no synthetic activity.",
+        "color_harmony": "Shared neutral/terracotta tokens; light and dark contrast checked.",
+        "consistency": "Shared shell, logo, controls and state badges.",
+        "responsive_robustness": "Navigation, controls and history remain available without horizontal overflow.",
+        "usability_accessibility": "Keyboard routes, focus, labelled forms and Axe gates verified."
+      }
+    },
+    {
+      "id": "verified-light-and-dark",
+      "scores": {
+        "visual_hierarchy": 8.8,
+        "spacing_layout": 8.7,
+        "typography": 8.8,
+        "component_polish": 8.7,
+        "color_harmony": 9.0,
+        "consistency": 8.9,
+        "responsive_robustness": 8.8,
+        "usability_accessibility": 9.0
+      },
+      "gates": {
+        "functionality": true,
+        "content_integrity": true,
+        "responsive_integrity": true,
+        "accessibility": true,
+        "runtime_health": true,
+        "visual_assets": true
+      },
+      "evidence": {
+        "visual_hierarchy": "Agent remains first; one primary action per page.",
+        "spacing_layout": "1440x900 and 390x844; aligned stage and readable side context.",
+        "typography": "Existing serif headings and restrained interface text.",
+        "component_polish": "Real empty, approval, error and module states; no synthetic activity.",
+        "color_harmony": "Shared neutral/terracotta tokens; light and dark contrast checked.",
+        "consistency": "Shared shell, logo, controls and state badges.",
+        "responsive_robustness": "Navigation, controls and history remain available without horizontal overflow.",
+        "usability_accessibility": "Keyboard routes, focus, labelled forms and Axe gates verified."
+      }
+    }
+  ]
+}

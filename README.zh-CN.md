@@ -32,6 +32,14 @@ PostgreSQL 部署与 M2 并发门禁见 [docs/runbooks/postgres.md](docs/runbook
 [ADR 0006](docs/adr/0006-browser-eye-and-hand.md) 和 [docs/runbooks/browser.md](docs/runbooks/browser.md)；
 完整示例见 [examples/web_watch_todomvc](examples/web_watch_todomvc)。
 
+**Morning Agent 界面。** 使用 Pi 原生持久会话、RPC 执行、工具、模型与上下文管理、Skills、扩展和 MCP；
+Gateway 可在 GUI 中添加、修改、删除和真实测试，凭据存入 macOS 钥匙串。Pulse 是其中的后台能力，
+根据自然语言和页面内容理解驻守目标，符合条件才唤醒，不再要求用户填写条件或选择网页列。
+先构建 `apps/pulse`、安装 `apps/agent-runtime` 并运行 `npm run prepare:runtime`，
+再运行 `uv run python scripts/pulse.py`，打开 `http://127.0.0.1:8788`。
+首次迁移已有密钥文件或环境配置，之后以 GUI 配置为准；密钥不通过命令行或公共 RPC 传递。
+使用 `--workspace` 指定编程工作区。详见 [Agent 手册](docs/runbooks/pulse.md)。
+
 **OpenAI 兼容中转。** sidecar 使用 OpenAI Responses 协议，只换 `--openai-base-url` 和 key 就能接中转、代理或自建网关，
 前提是它支持图片输入，并且支持 `computer` 工具或普通函数调用（`--variant function`，用于回 `Unsupported tool type: computer` 的中转）；
 不支持 `previous_response_id` 的中转由 sidecar 重发对话。`wakecore-ui-runtime --check-model` 用两次很短的调用检查这几项。
@@ -104,9 +112,10 @@ PostgreSQL 部署与 M2 并发门禁见 [docs/runbooks/postgres.md](docs/runbook
   - 只支持 macOS，需要 Node，以及辅助功能和录屏权限；
   - 同一时间只能做一项操作；
   - 凭据框是按关键词判断的，宁可多交给人。
-- **目前没有随包提供的生产 planner 模型适配器**：内置推理适配器是脚本化的，所以部署后 `"on_met": "plan"`
+- **目前没有随包提供的通用生产 planner 模型适配器**：内核默认推理适配器是脚本化的，所以默认部署后 `"on_met": "plan"`
   的任务不会提出任何动作。`"on_met": "notify"`（盯 + 通知）不需要模型，已经端到端跑通，
   见 [examples/web_watch_todomvc](examples/web_watch_todomvc/)（附真实运行记录）。
+  Morning 启动器装配真实模型语义理解与 Pi 执行循环；网页动作仍只提议用户确认的配方并经过内核审批。
 - 站内信会写入并在时间线里显示为已确认的动作，但还没有列出站内信的 API。
 - "眼"已在真实公网测试站点上验证（`tests/real` R1、R1b、R3b）；这些都是公开的演示/测试站点，不是真实业务系统。
 - 除上述浏览器路径外只接入了离线/脚本化适配器：Gmail 及其他第三方服务**未验证**。

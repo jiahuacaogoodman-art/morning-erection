@@ -1,0 +1,124 @@
+{
+  "iterations": [
+    {
+      "category_deltas": null,
+      "delta": null,
+      "failed_gates": [
+        "accessibility"
+      ],
+      "floor_failures": [],
+      "label": null,
+      "round": null,
+      "scores": {
+        "color_harmony": 8.7,
+        "component_polish": 7.9,
+        "consistency": 8.7,
+        "responsive_robustness": 8.4,
+        "spacing_layout": 8.4,
+        "typography": 8.8,
+        "usability_accessibility": 8.0,
+        "visual_hierarchy": 8.7
+      },
+      "total": 84.8
+    },
+    {
+      "category_deltas": {
+        "color_harmony": 0.3,
+        "component_polish": 0.7,
+        "consistency": 0.2,
+        "responsive_robustness": 0.4,
+        "spacing_layout": 0.2,
+        "typography": 0.0,
+        "usability_accessibility": 0.8,
+        "visual_hierarchy": 0.1
+      },
+      "delta": 2.9,
+      "failed_gates": [
+        "accessibility"
+      ],
+      "floor_failures": [],
+      "label": null,
+      "round": null,
+      "scores": {
+        "color_harmony": 9.0,
+        "component_polish": 8.6,
+        "consistency": 8.9,
+        "responsive_robustness": 8.8,
+        "spacing_layout": 8.6,
+        "typography": 8.8,
+        "usability_accessibility": 8.8,
+        "visual_hierarchy": 8.8
+      },
+      "total": 87.7
+    },
+    {
+      "category_deltas": {
+        "color_harmony": 0.0,
+        "component_polish": 0.1,
+        "consistency": 0.0,
+        "responsive_robustness": 0.0,
+        "spacing_layout": 0.1,
+        "typography": 0.0,
+        "usability_accessibility": 0.2,
+        "visual_hierarchy": 0.0
+      },
+      "delta": 0.5,
+      "failed_gates": [],
+      "floor_failures": [],
+      "label": null,
+      "round": null,
+      "scores": {
+        "color_harmony": 9.0,
+        "component_polish": 8.7,
+        "consistency": 8.9,
+        "responsive_robustness": 8.8,
+        "spacing_layout": 8.7,
+        "typography": 8.8,
+        "usability_accessibility": 9.0,
+        "visual_hierarchy": 8.8
+      },
+      "total": 88.2
+    }
+  ],
+  "recommendation": {
+    "action": "stop",
+    "complete": true,
+    "reasons": [
+      "target reached and latest gain is marginal"
+    ]
+  },
+  "reset_used": false,
+  "summary": {
+    "baseline_total": 84.8,
+    "category_changes": {
+      "color_harmony": 0.3,
+      "component_polish": 0.8,
+      "consistency": 0.2,
+      "responsive_robustness": 0.4,
+      "spacing_layout": 0.3,
+      "typography": 0.0,
+      "usability_accessibility": 1.0,
+      "visual_hierarchy": 0.1
+    },
+    "current_total": 88.2,
+    "overall_change": 3.4
+  },
+  "thresholds": {
+    "exceptional_target": 92.0,
+    "marginal_gain": 1.0,
+    "max_rounds": 5,
+    "min_category": 7.5,
+    "target": 85.0
+  },
+  "verification_blocked": false,
+  "weights": {
+    "color_harmony": 12,
+    "component_polish": 14,
+    "consistency": 10,
+    "responsive_robustness": 10,
+    "spacing_layout": 16,
+    "typography": 14,
+    "usability_accessibility": 6,
+    "visual_hierarchy": 18
+  }
+}

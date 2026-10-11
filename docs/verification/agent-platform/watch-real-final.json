@@ -1,0 +1,14 @@
+{
+  "real_http": true,
+  "real_network_service": true,
+  "real_process": true,
+  "real_folder": true,
+  "real_log": true,
+  "headless_pi_absent": true,
+  "headless_worker_running": true,
+  "real_file_trigger_without_browser": true,
+  "paused_task_restored": true,
+  "notification_deduplicated_after_restart": true,
+  "events_persisted": true,
+  "watch_stops_independently": true
+}

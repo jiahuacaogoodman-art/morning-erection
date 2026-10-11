@@ -6,25 +6,78 @@
   "$ref": "#/$defs/request",
   "$defs": {
     "request": {
-      "type": "object", "additionalProperties": false, "required": ["session_ref", "url", "origins", "extractor"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_ref",
+        "url",
+        "origins",
+        "extractor"
+      ],
       "properties": {
-        "session_ref": {"$ref": "common.v1.schema.json#/$defs/session_ref"},
-        "url": {"$ref": "common.v1.schema.json#/$defs/url"},
-        "origins": {"$ref": "common.v1.schema.json#/$defs/origins"},
-        "extractor": {"type": "object", "description": "extractor.v1.schema.json; an invalid one is outcome SCHEMA_INVALID"},
-        "timeouts": {"$ref": "common.v1.schema.json#/$defs/timeouts"}
+        "session_ref": {
+          "$ref": "common.v1.schema.json#/$defs/session_ref"
+        },
+        "url": {
+          "$ref": "common.v1.schema.json#/$defs/url"
+        },
+        "origins": {
+          "$ref": "common.v1.schema.json#/$defs/origins"
+        },
+        "extractor": {
+          "type": "object",
+          "description": "extractor.v1.schema.json; an invalid one is outcome SCHEMA_INVALID"
+        },
+        "timeouts": {
+          "$ref": "common.v1.schema.json#/$defs/timeouts"
+        }
       }
     },
     "response": {
-      "type": "object", "required": ["outcome", "records", "error_code"],
+      "type": "object",
+      "required": [
+        "outcome",
+        "records",
+        "error_code"
+      ],
       "properties": {
-        "outcome": {"$ref": "common.v1.schema.json#/$defs/outcome"},
-        "records": {"type": "object", "additionalProperties": {"$ref": "common.v1.schema.json#/$defs/record"}},
-        "content_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-        "error_code": {"type": ["string", "null"]},
-        "url": {"type": "string"},
-        "title": {"type": "string"},
-        "detail": {"type": "string"}
+        "outcome": {
+          "$ref": "common.v1.schema.json#/$defs/outcome"
+        },
+        "records": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "common.v1.schema.json#/$defs/record"
+          }
+        },
+        "content_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "error_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "retry_after_seconds": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 604800,
+          "description": "Server HTTP Retry-After lower bound; optional."
+        }
       }
     }
   }

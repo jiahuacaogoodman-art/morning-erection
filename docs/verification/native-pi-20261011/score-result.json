@@ -1,0 +1,135 @@
+{
+  "iterations": [
+    {
+      "category_deltas": null,
+      "delta": null,
+      "failed_gates": [
+        "accessibility",
+        "content_integrity",
+        "functionality"
+      ],
+      "floor_failures": [
+        "color_harmony",
+        "component_polish",
+        "consistency",
+        "responsive_robustness",
+        "spacing_layout",
+        "typography",
+        "usability_accessibility",
+        "visual_hierarchy"
+      ],
+      "label": "\u539f\u59cb\u9875\u9762",
+      "round": 0,
+      "scores": {
+        "color_harmony": 6.4,
+        "component_polish": 5.6,
+        "consistency": 6.7,
+        "responsive_robustness": 6.2,
+        "spacing_layout": 6.2,
+        "typography": 6.4,
+        "usability_accessibility": 5.6,
+        "visual_hierarchy": 6.0
+      },
+      "total": 61.5
+    },
+    {
+      "category_deltas": {
+        "color_harmony": 2.5,
+        "component_polish": 2.8,
+        "consistency": 1.9,
+        "responsive_robustness": 2.2,
+        "spacing_layout": 2.1,
+        "typography": 2.2,
+        "usability_accessibility": 2.8,
+        "visual_hierarchy": 2.5
+      },
+      "delta": 23.6,
+      "failed_gates": [
+        "functionality"
+      ],
+      "floor_failures": [],
+      "label": "Morning \u89c6\u89c9\u91cd\u505a",
+      "round": 1,
+      "scores": {
+        "color_harmony": 8.9,
+        "component_polish": 8.4,
+        "consistency": 8.6,
+        "responsive_robustness": 8.4,
+        "spacing_layout": 8.3,
+        "typography": 8.6,
+        "usability_accessibility": 8.4,
+        "visual_hierarchy": 8.5
+      },
+      "total": 85.1
+    },
+    {
+      "category_deltas": {
+        "color_harmony": -0.1,
+        "component_polish": 0.2,
+        "consistency": 0.2,
+        "responsive_robustness": 0.2,
+        "spacing_layout": -0.1,
+        "typography": -0.1,
+        "usability_accessibility": 0.3,
+        "visual_hierarchy": 0.2
+      },
+      "delta": 0.8,
+      "failed_gates": [],
+      "floor_failures": [],
+      "label": "\u539f\u751f\u80fd\u529b\u4e0e\u6700\u7ec8\u754c\u9762",
+      "round": 2,
+      "scores": {
+        "color_harmony": 8.8,
+        "component_polish": 8.6,
+        "consistency": 8.8,
+        "responsive_robustness": 8.6,
+        "spacing_layout": 8.2,
+        "typography": 8.5,
+        "usability_accessibility": 8.7,
+        "visual_hierarchy": 8.7
+      },
+      "total": 85.9
+    }
+  ],
+  "recommendation": {
+    "action": "stop",
+    "complete": true,
+    "reasons": [
+      "target reached and latest gain is marginal"
+    ]
+  },
+  "reset_used": true,
+  "summary": {
+    "baseline_total": 61.5,
+    "category_changes": {
+      "color_harmony": 2.4,
+      "component_polish": 3.0,
+      "consistency": 2.1,
+      "responsive_robustness": 2.4,
+      "spacing_layout": 2.0,
+      "typography": 2.1,
+      "usability_accessibility": 3.1,
+      "visual_hierarchy": 2.7
+    },
+    "current_total": 85.9,
+    "overall_change": 24.4
+  },
+  "thresholds": {
+    "exceptional_target": 92.0,
+    "marginal_gain": 1.0,
+    "max_rounds": 5,
+    "min_category": 7.5,
+    "target": 85.0
+  },
+  "verification_blocked": false,
+  "weights": {
+    "color_harmony": 12,
+    "component_polish": 14,
+    "consistency": 10,
+    "responsive_robustness": 10,
+    "spacing_layout": 16,
+    "typography": 14,
+    "usability_accessibility": 6,
+    "visual_hierarchy": 18
+  }
+}

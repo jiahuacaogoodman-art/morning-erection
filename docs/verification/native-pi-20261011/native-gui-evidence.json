@@ -1,0 +1,23 @@
+{
+  "native_session_id": "01a12769-ee49-726a-a3ae-43a594f41d66",
+  "tool_names": [
+    "bash",
+    "edit",
+    "read",
+    "write"
+  ],
+  "compaction_count": 1,
+  "last_assistant_texts": [
+    "MORNING_BETA",
+    "",
+    "BASE_DONE",
+    "FOLLOWUP_DONE"
+  ],
+  "context_word_verified": true,
+  "skill_verified": true,
+  "tool_chain_verified": true,
+  "cancelled_before_write": true,
+  "final_file": "MORNING_BETA",
+  "fixture_compaction_keep_recent_tokens": 512,
+  "production_compaction_settings_changed": false
+}

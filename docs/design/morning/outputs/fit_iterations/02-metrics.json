@@ -1,0 +1,8 @@
+{
+  "iteration": 2,
+  "iou": 0.9722762577600494,
+  "src_only_px": 1165,
+  "render_only_px": 14626,
+  "alpha_threshold": 160,
+  "smoothness": "circular arc and cubic Bezier boundaries; no pixel-grid tracing"
+}

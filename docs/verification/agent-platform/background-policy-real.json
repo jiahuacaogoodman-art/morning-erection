@@ -1,0 +1,9 @@
+{
+  "model_binding_present": true,
+  "changed_recipient_refused": true,
+  "background_started": true,
+  "background_finished": true,
+  "unattended_native_write_blocked": true,
+  "native_tools_restored": true,
+  "ordinary_native_write_still_works": true
+}

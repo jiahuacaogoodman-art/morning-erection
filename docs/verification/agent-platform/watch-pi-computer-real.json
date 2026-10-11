@@ -1,0 +1,38 @@
+{
+  "notification_count": 1,
+  "wakeups": [
+    {
+      "state": "delivered",
+      "scope_present": true
+    }
+  ],
+  "computer_8_requires_approval": true,
+  "no_unapproved_click": true,
+  "native_tools_before": [
+    "read",
+    "bash",
+    "edit",
+    "write",
+    "morning_inspect_page",
+    "morning_prepare_watch",
+    "morning_watches",
+    "morning_computer",
+    "morning_inspect_source",
+    "morning_prepare_source_watch"
+  ],
+  "native_tools_after": [
+    "read",
+    "bash",
+    "edit",
+    "write",
+    "morning_inspect_page",
+    "morning_prepare_watch",
+    "morning_watches",
+    "morning_computer",
+    "morning_inspect_source",
+    "morning_prepare_source_watch"
+  ],
+  "native_tools_restored": true,
+  "second_approved_action_observed": false,
+  "final_reply": "监控条件已触发：文件内容为 `READY`。\n\n已观察本机计算器，当前显示 **7**；已准备点击数字 **8** 一次。操作尚未执行，正在等待你在界面批准。"
+}

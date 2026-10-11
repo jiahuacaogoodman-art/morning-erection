@@ -26,10 +26,14 @@ dependencies = [
     "morning-erection==0.3.0",
 ]
 
+[project.optional-dependencies]
+desktop = ["mss>=10,<11", "Pillow>=11,<13", "watchdog>=6,<7"]
+
 [project.scripts]
 wakecore-ui-runtime = "wakecore_ui_runtime.server:main"
 wakecore-ui-login = "wakecore_ui_runtime.login:main"
 wakecore-desktop-runtime = "wakecore_ui_runtime.desktop.server:main"
+morning-computer = "wakecore_ui_runtime.desktop.node:main"
 
 [project.urls]
 Homepage = "https://github.com/jiahuacaogoodman-art/morning-erection"

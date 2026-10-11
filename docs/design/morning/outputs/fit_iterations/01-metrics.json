@@ -1,0 +1,7 @@
+{
+  "iteration": 1,
+  "iou": 0.9720661467466382,
+  "src_only_px": 1169,
+  "render_only_px": 14745,
+  "alpha_threshold": 160
+}

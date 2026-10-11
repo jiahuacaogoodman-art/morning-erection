@@ -1,0 +1,33 @@
+{
+  "before": {
+    "session_id": "01a1295d-55db-767e-a07d-7615ec0c0089",
+    "message_count": 0,
+    "watches": [
+      {
+        "task_id": "pulse_ae6c6bcccf974784",
+        "state": "paused",
+        "lifecycle": "PAUSED",
+        "version": 4
+      }
+    ]
+  },
+  "after": {
+    "session_id": "01a1295d-55db-767e-a07d-7615ec0c0089",
+    "message_count": 0,
+    "watches": [
+      {
+        "task_id": "pulse_ae6c6bcccf974784",
+        "state": "paused",
+        "lifecycle": "PAUSED",
+        "version": 4
+      }
+    ]
+  },
+  "selection_and_watches_preserved": true,
+  "platform_available": true,
+  "modules": {
+    "computer": true,
+    "desktop_notifications": false,
+    "watch": true
+  }
+}

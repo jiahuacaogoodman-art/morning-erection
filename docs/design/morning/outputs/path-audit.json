@@ -1,0 +1,33 @@
+{
+  "segment_count": 5,
+  "cubic_segments": 5,
+  "line_segments": 0,
+  "closed": true,
+  "budget": null,
+  "over_budget": false,
+  "median_segment_length": 395.382,
+  "short_segment_warnings": [
+    {
+      "segment": 5,
+      "length": 65.314
+    }
+  ],
+  "join_angle_threshold_degrees": 8.0,
+  "join_angle_warnings": [
+    {
+      "join_after_segment": 2,
+      "angle_degrees": 47.63
+    },
+    {
+      "join_after_segment": 4,
+      "angle_degrees": 54.953
+    },
+    {
+      "join_after_segment": 5,
+      "angle_degrees": 93.857
+    }
+  ],
+  "input_svg": "apps/pulse/public/morning-logo.svg",
+  "selected_path_index": 1,
+  "path_count": 8
+}

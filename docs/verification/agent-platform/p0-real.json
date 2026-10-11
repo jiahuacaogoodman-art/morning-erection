@@ -1,0 +1,28 @@
+{
+  "gateway": {
+    "ok": true,
+    "category": "connected",
+    "message": "认证和模型调用成功。",
+    "model": "gpt-5.6-sol",
+    "latency_ms": 4076,
+    "tested_at": "2026-10-11T04:20:38.291Z",
+    "usage": {
+      "input": 31,
+      "output": 8,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "reasoning": 0,
+      "totalTokens": 39,
+      "cost": {
+        "input": 0.000124,
+        "output": 0.00016,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0.000284
+      }
+    }
+  },
+  "file_verified": true,
+  "custom_extensions_disabled": true,
+  "session_restored": true
+}

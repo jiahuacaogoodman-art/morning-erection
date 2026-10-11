@@ -8,6 +8,26 @@ the UI Runtime protocol only breaks on a new major, `wakecore.ui-runtime/2`).
 ## [Unreleased]
 
 ### Added
+- Agent-first conversation with real model understanding and grounded watch proposals;
+  no product example presets or manual condition/column forms.
+- Native Pi 0.99.1 session runtime and RPC: persistent sessions/branches, model and context
+  controls, full native tools, Skills/templates, extension UI, MCP and package management.
+  The older scoped adapter is retained only as a regression reference.
+- Gateway GUI credential lifecycle with macOS Keychain, actual model connection tests,
+  classified errors, safe migration and restart recovery. Private credential IPC is separated
+  from Pi's public RPC protocol. A per-Gateway Responses compatibility option preserves
+  native model/tool behavior while adapting leading instructions for Codex gateways.
+- Morning sunrise identity with restrained startup, loading and feedback motion; responsive
+  conversation controls, image input, queued instructions and immediate native interruption.
+- `semantic_watch.v1`: real semantic judgement on relevant content changes, retaining
+  negation and quiet states without model calls on unchanged polls.
+- **Pulse Agent workspace** (`apps/pulse`, Vite/React): a compact status island, content-based
+  website watch creation, task details, human login, pause/resume, settings and exact approvals.
+  `scripts/pulse.py --demo` runs a real Chromium course fixture, guarded submission and post-verification.
+- Opt-in durable adaptive cadence with quiet backoff, change reset, positive jitter, Retry-After,
+  authentication/extractor suspension and throttled explicit checks. Existing fixed-cadence tasks are unchanged.
+- `web_watch.v1`, scalar extractor `key_value`, read-only content inspection, session login lifecycle,
+  owner-scoped Pulse projections, and a configured action-recipe planner. Frontend QA is part of browser CI.
 - `examples/web_watch_todomvc/`: grant, binding, task spec and extractor for a watch over the
   management API, with the timeline of a real run against the live demo site;
   `tests/unit/test_examples.py` keeps the files valid.

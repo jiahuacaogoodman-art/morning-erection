@@ -1,0 +1,21 @@
+{
+  "final_changed_pixels": 0,
+  "final_frame_iou": 1.0,
+  "easing_probes": {
+    "180": {
+      "sun": "matrix(0.990148, 0, 0, 0.990148, 0, 0.0896454)",
+      "rays": "0"
+    },
+    "350": {
+      "sun": "matrix(0.998241, 0, 0, 0.998241, 0, -0.476866)",
+      "rays": "0.6172"
+    },
+    "620": {
+      "sun": "matrix(1, 0, 0, 1, 0, -0.111599)",
+      "rays": "0.996174"
+    }
+  },
+  "geometry": "original repo SVG paths preserved",
+  "source_raster_fit": "not applicable: existing vector",
+  "frames": "motion-strip.png"
+}

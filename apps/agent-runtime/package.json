@@ -1,0 +1,21 @@
+{
+  "name": "morning-agent-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "pi",
+    "test": "node --test test/*.test.mjs",
+    "prepare:runtime": "node prepare-runtime.mjs",
+    "start:legacy": "node runtime.mjs"
+  },
+  "dependencies": {
+    "@earendil-works/pi-agent-core": "0.99.1",
+    "@earendil-works/pi-ai": "0.99.1",
+    "@earendil-works/pi-coding-agent": "0.99.1",
+    "brace-expansion": "5.0.12"
+  },
+  "overrides": {
+    "brace-expansion": "5.0.12"
+  }
+}

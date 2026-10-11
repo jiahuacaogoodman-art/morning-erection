@@ -237,7 +237,9 @@
           "type": "string",
           "enum": [
             "grades.v1",
-            "generic_watch.v1"
+            "generic_watch.v1",
+            "web_watch.v1",
+            "semantic_watch.v1"
           ]
         },
         "params": {

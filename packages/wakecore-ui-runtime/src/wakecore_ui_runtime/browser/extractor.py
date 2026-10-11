@@ -51,7 +51,7 @@ _CONVERSIONS = ("transform", "pattern", "group", "default")
 
 EXTRACT_JS = """(cfg) => {
   const text = n => (n ? n.innerText : '').replace(/\\s+/g, ' ').trim();
-  const keyOf = (el, cells) => cfg.key_attr ? el.getAttribute(cfg.key_attr) : cells[cfg.key_field];
+  const keyOf = (el, cells) => cfg.key_value || (cfg.key_attr ? el.getAttribute(cfg.key_attr) : cells[cfg.key_field]);
   if (cfg.list) {
     const items = [...document.querySelectorAll(cfg.list.item)];
     const rows = items.map(it => {
@@ -98,7 +98,7 @@ def _css(v: Any) -> bool:
 
 
 def validate(cfg: Any) -> dict[str, Any]:
-    if not isinstance(cfg, dict) or set(cfg) - {"table", "list", "ready", "key_attr", "key_field", "columns", "login"}:
+    if not isinstance(cfg, dict) or set(cfg) - {"table", "list", "ready", "key_attr", "key_field", "key_value", "columns", "login"}:
         raise ExtractorError("extractor: unknown or missing fields")
     if ("table" in cfg) == ("list" in cfg):
         raise ExtractorError("extractor needs exactly one of table / list")
@@ -115,8 +115,10 @@ def validate(cfg: Any) -> dict[str, Any]:
             raise ExtractorError("extractor.ready is required in list mode (an empty list must be provable)")
     if "ready" in cfg and not _css(cfg["ready"]):
         raise ExtractorError("extractor.ready must be a CSS selector")
-    if bool(cfg.get("key_attr")) == bool(cfg.get("key_field")):
-        raise ExtractorError("extractor needs exactly one of key_attr / key_field")
+    if sum(bool(cfg.get(k)) for k in ("key_attr", "key_field", "key_value")) != 1:
+        raise ExtractorError("extractor needs exactly one of key_attr / key_field / key_value")
+    if "key_value" in cfg and (not isinstance(cfg["key_value"], str) or not 0 < len(cfg["key_value"]) <= 200):
+        raise ExtractorError("extractor.key_value must be a non-empty string, max 200 characters")
     cols = cfg.get("columns")
     if not isinstance(cols, list) or not cols or len(cols) > 32:
         raise ExtractorError("extractor.columns must be a non-empty list")

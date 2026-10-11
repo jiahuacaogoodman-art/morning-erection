@@ -1,0 +1,145 @@
+{
+  "completed_at": "2026-10-11T09:20:09.320114+00:00",
+  "scope": "D0 当前模型网关核心闭环；没有把整个Gateway域或其他域改标完成",
+  "modified_files": [
+    {
+      "path": "packages/wakecore/src/wakecore/app/pulse/gateways.py",
+      "sha256": "91d2528b8436f729319cc7f293c66a21914c530cadaa42a474c8cd7ddbe4be7a"
+    },
+    {
+      "path": "packages/wakecore/src/wakecore/app/pulse/gateway_service.py",
+      "sha256": "2efe068d28f6139a70a2c192145e32dfa003c387235db033c84c047da8762b37"
+    },
+    {
+      "path": "packages/wakecore/src/wakecore/app/pulse/server.py",
+      "sha256": "76947fba8f28173c8c50eb9cd635584581d2d63cd3904d72c5e370a0d016a1f0"
+    },
+    {
+      "path": "packages/wakecore/src/wakecore/adapters/agent_runtime/native.py",
+      "sha256": "520a46deda38e3d8200f1f73f0a4631f467a6de41e419a32e6a5aaded25c7d60"
+    },
+    {
+      "path": "apps/agent-runtime/native-gateways.mjs",
+      "sha256": "fc40927eda510e940b232367f1095f29a7ed302065756318d95879710798a4ee"
+    },
+    {
+      "path": "apps/agent-runtime/native-bootstrap.mjs",
+      "sha256": "048801dab541d56cdf56c913d95d7d2bed709701cb8a0148359c25968f8f4656"
+    },
+    {
+      "path": "apps/pulse/src/Gateways.tsx",
+      "sha256": "ff3fe5c1fe94425d5ce187f4351a91152ec3c23587f3e8bd77854dcd70a2b6c4"
+    },
+    {
+      "path": "apps/pulse/src/types.ts",
+      "sha256": "e7b653d2b55938dc490faa29bba45e67af89d0ea89ed057bc476963a0745c4d3"
+    },
+    {
+      "path": "tests/unit/test_gateway_credentials.py",
+      "sha256": "85d9e5925aa9e7fed8dda4ec65c26d06f0374eafd2c82a74fd982c98a75c3356"
+    },
+    {
+      "path": "tests/unit/test_gateway_lifecycle.py",
+      "sha256": "27c0ded9d3295d638462562ae474b7099922bb11eedccadb76e2981eaa2f0c40"
+    },
+    {
+      "path": "tests/unit/test_native_pi.py",
+      "sha256": "1ccff0b86d331f1c5c7315f1f60229ce429f92419e90c526b89cecc58bd689f0"
+    },
+    {
+      "path": "tests/ui/test_native_frontend.py",
+      "sha256": "3ece9292596a33f1daa8c358fa0540b104b2822b4a07f9fefa15928b8e5abeb8"
+    },
+    {
+      "path": "apps/agent-runtime/test/native-contract.test.mjs",
+      "sha256": "3f5515da0da9c5f37d13084354c8665b1d940e1152578a2b31bf00cc960445f2"
+    },
+    {
+      "path": "scripts/verify_gateway_lifecycle.py",
+      "sha256": "a1a031fc53beac8a88f23b1bf9e943c899e014077d248a2b9dbd005af0f9aa9d"
+    }
+  ],
+  "tests": {
+    "backend": {
+      "command": "uv run pytest tests --ignore=tests/ui -q",
+      "passed": 764,
+      "skipped": 9,
+      "seconds": 35.24
+    },
+    "ui_full": {
+      "command": "uv run pytest tests/ui -q",
+      "passed": 73,
+      "seconds": 179.77
+    },
+    "ui_final_gateway": {
+      "command": "uv run pytest tests/ui/test_native_frontend.py -q",
+      "passed": 3,
+      "seconds": 8.72
+    },
+    "native_node": {
+      "command": "npm --prefix apps/agent-runtime test",
+      "passed": 11
+    },
+    "gateway_native_targeted": {
+      "command": "uv run pytest tests/unit/test_gateway_lifecycle.py tests/unit/test_gateway_credentials.py tests/unit/test_native_pi.py -q",
+      "passed": 27
+    },
+    "build": {
+      "command": "npm --prefix apps/pulse run build",
+      "ok": true,
+      "warning": "Vite主JS块520.17KB，超过500KB提示；gzip 161.76KB。"
+    },
+    "ruff": {
+      "ok": true
+    },
+    "openapi": {
+      "command": "uv run python scripts/gen_openapi.py --check",
+      "ok": true
+    }
+  },
+  "live_gateway": {
+    "gateway": "https://pixelstarrysky.xyz",
+    "model": "gpt-5.6-sol",
+    "protocol": "openai-responses",
+    "custom_modules": false,
+    "invalid_credentials": "authentication",
+    "generation": {
+      "state": "succeeded",
+      "latency_ms": 3600
+    },
+    "tools": [
+      "read",
+      "write"
+    ],
+    "artifact_verified": true,
+    "restart": {
+      "same_session": true,
+      "message_count": 7,
+      "configuration_applied": true
+    },
+    "secret_not_in_public_or_history": true,
+    "credential_removal": true,
+    "ok": true
+  },
+  "production": {
+    "same_selected_session": true,
+    "empty_conversation_preserved": true,
+    "existing_watch_lifecycle": "PAUSED",
+    "watch_version": 8,
+    "ui_connection_test_latency_ms": 3272,
+    "native_model_selection_preserved": true,
+    "screenshot": "gateway-verified.png"
+  },
+  "remaining": [
+    "当前真实网关覆盖Responses/instructions；Chat Completions和Anthropic网关仍需各自真实服务验收",
+    "多模型发现、逐项能力编辑、跨平台安全存储、配置损坏修复向导未完成",
+    "OAuth仍交Pi原生流程；并非所有提供商都已完成实际登录/刷新验证",
+    "元数据文件与OS钥匙串无法形成跨存储原子提交；断电恢复日志仍待做",
+    "Pi会话/Tasks/Computer/Watch的其余矩阵项继续开放"
+  ],
+  "next_domain": "Pi会话/执行的恢复和管理闭环，依照矩阵D1，不继续扩张顶层入口。",
+  "format_only_cleanup": [
+    "apps/pulse/src/settings.css",
+    "docs/audits/2026-10-11-feature-matrix.csv"
+  ]
+}

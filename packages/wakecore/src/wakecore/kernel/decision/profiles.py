@@ -228,7 +228,80 @@ GENERIC_WATCH_V1 = DecisionProfile(
     evaluators={("all_targets_match", 1): _all_targets_match},
 )
 
-PROFILES: dict[str, DecisionProfile] = {p.profile_id: p for p in (GRADES_V1, GENERIC_WATCH_V1)}
+
+def _web_validate(params: dict[str, Any]) -> None:
+    flag = params.get("notify_on_change", False)
+    if not isinstance(flag, bool):
+        raise SchemaMismatch("decision.params.notify_on_change must be boolean")
+    copy = {k: v for k, v in params.items() if k != "notify_on_change"}
+    if flag and not copy.get("conditions"):
+        copy["conditions"] = [{"field": "value", "op": "truthy"}]
+    _watch_validate(copy)
+
+
+def _web_annotate(changes: list[dict[str, Any]], params: dict[str, Any]) -> list[dict[str, Any]]:
+    if not params.get("notify_on_change"):
+        return [{**c, "kind": classify_watch(c, params)} for c in changes]
+    fields = set(params.get("watch_fields") or [])
+    out = []
+    for c in changes:
+        old, new = c.get("old"), c.get("new")
+        moved = old is None or new is None or not fields or any(old.get(f) != new.get(f) for f in fields)
+        out.append({**c, "kind": "web_changed" if moved else "unwatched_changed"})
+    return out
+
+
+def _web_route(params: dict[str, Any], **kw: Any) -> WakeDecision:
+    if params.get("notify_on_change"):
+        params = {**params, "conditions": [{"field": "value", "op": "truthy", "kind": "web_changed"}]}
+    else:
+        # Explicit conditions are sufficient: movement on the waiting side of a threshold
+        # updates the trusted value without spending model budget or notifying the user.
+        meaningful = _met_kinds(params) | {"record_removed"}
+        kw["changes"] = [c for c in kw["changes"] if c["kind"] in meaningful]
+    return _watch_route(params, **kw)
+
+
+WEB_WATCH_V1 = DecisionProfile(
+    profile_id="web_watch.v1", validate=_web_validate, annotate=_web_annotate, route=_web_route,
+    template=lambda changes, params: ("notify.web_watch", watch_notification(changes, params)),
+    evaluators={("all_targets_match", 1): _all_targets_match, ("watch_forever", 1): lambda *args: False},
+)
+
+
+def _semantic_validate(params):
+    if set(params) - {"condition", "watch_fields", "on_met", "title"}:
+        raise SchemaMismatch("semantic watch has unknown parameters")
+    if not isinstance(params.get("condition"), str) or not 1 <= len(params["condition"]) <= 2000:
+        raise SchemaMismatch("semantic watch requires a user-confirmed condition")
+    if params.get("on_met", "notify") not in ("notify", "plan"):
+        raise SchemaMismatch("semantic watch on_met must be notify or plan")
+
+
+def _semantic_route(params, *, source_ok, coverage_ok, blocked_reason, changes, baseline, model_available, egress_allowed):
+    if not source_ok or not coverage_ok:
+        return WakeDecision(Route.SOURCE_BLOCKED, blocked_reason or "coverage_insufficient")
+    if baseline or not changes:
+        return WakeDecision(Route.NOOP, "baseline_established" if baseline else "no_change")
+    if model_available and egress_allowed:
+        return WakeDecision(Route.JUDGE, "semantic_condition_check", judge_changes=tuple(changes))
+    return WakeDecision(Route.HUMAN_REVIEW, "semantic_model_unavailable", judge_changes=tuple(changes))
+
+
+def _semantic_annotate(changes, params):
+    fields = set(params.get("watch_fields") or [])
+    return [{**c, "kind": "semantic_changed"} for c in changes if c.get("old") is None or c.get("new") is None
+            or not fields or any(c["old"].get(field) != c["new"].get(field) for field in fields)]
+
+
+SEMANTIC_WATCH_V1 = DecisionProfile(
+    profile_id="semantic_watch.v1", validate=_semantic_validate,
+    annotate=_semantic_annotate, route=_semantic_route,
+    template=lambda changes, params: ("notify.semantic", {"recipient": "self", "title": params.get("title", "等待条件已满足"),
+                                                         "body": params["condition"], "data": {}}),
+    evaluators={("watch_forever", 1): lambda *args: False})
+
+PROFILES: dict[str, DecisionProfile] = {p.profile_id: p for p in (GRADES_V1, GENERIC_WATCH_V1, WEB_WATCH_V1, SEMANTIC_WATCH_V1)}
 
 
 def get_profile(profile_id: str) -> DecisionProfile:

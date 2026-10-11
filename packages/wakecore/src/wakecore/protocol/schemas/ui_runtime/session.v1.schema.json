@@ -6,26 +6,80 @@
   "$ref": "#/$defs/session",
   "$defs": {
     "session": {
-      "type": "object", "additionalProperties": false, "required": ["session_ref", "state", "profile_exists", "last_used_at"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_ref",
+        "state",
+        "profile_exists",
+        "last_used_at"
+      ],
       "properties": {
-        "session_ref": {"$ref": "common.v1.schema.json#/$defs/session_ref"},
-        "state": {"enum": ["open", "closed", "busy"]},
-        "profile_exists": {"type": "boolean"},
-        "last_used_at": {"type": ["number", "null"]}
+        "session_ref": {
+          "$ref": "common.v1.schema.json#/$defs/session_ref"
+        },
+        "state": {
+          "enum": [
+            "open",
+            "closed",
+            "busy",
+            "opening",
+            "human_login",
+            "closing",
+            "login_window_failed"
+          ]
+        },
+        "profile_exists": {
+          "type": "boolean"
+        },
+        "last_used_at": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
       }
     },
     "list_response": {
-      "type": "object", "required": ["sessions"],
-      "properties": {"sessions": {"type": "array", "items": {"$ref": "#/$defs/session"}}}
+      "type": "object",
+      "required": [
+        "sessions"
+      ],
+      "properties": {
+        "sessions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/session"
+          }
+        }
+      }
     },
     "release_request": {
-      "type": "object", "additionalProperties": false, "required": ["session_ref"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_ref"
+      ],
       "description": "legacy POST /v1/sessions/release body",
-      "properties": {"session_ref": {"$ref": "common.v1.schema.json#/$defs/session_ref"}}
+      "properties": {
+        "session_ref": {
+          "$ref": "common.v1.schema.json#/$defs/session_ref"
+        }
+      }
     },
     "release_response": {
-      "type": "object", "required": ["released"],
-      "properties": {"session_ref": {"type": "string"}, "released": {"type": "boolean"}}
+      "type": "object",
+      "required": [
+        "released"
+      ],
+      "properties": {
+        "session_ref": {
+          "type": "string"
+        },
+        "released": {
+          "type": "boolean"
+        }
+      }
     }
   }
 }

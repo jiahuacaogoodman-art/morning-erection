@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wakecore:schema:ui-runtime:session-login:v1",
+  "title": "POST /v1/sessions/login",
+  "$ref": "#/$defs/request",
+  "$defs": {
+    "request": {
+      "type": "object", "additionalProperties": false, "required": ["session_ref", "url"],
+      "properties": {"session_ref": {"$ref": "common.v1.schema.json#/$defs/session_ref"},
+                     "url": {"$ref": "common.v1.schema.json#/$defs/url"}, "finish": {"type": "boolean"}}
+    },
+    "response": {"type": "object", "required": ["state"], "properties": {"state": {"type": "string"}}}
+  }
+}

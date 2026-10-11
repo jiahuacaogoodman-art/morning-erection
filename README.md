@@ -93,6 +93,16 @@ confirm and activate it. The operator runbooks: [browser](docs/runbooks/browser.
 [operations](docs/runbooks/operations.md), [PostgreSQL](docs/runbooks/postgres.md).
 A complete browser-watch example is in [examples/web_watch_todomvc](examples/web_watch_todomvc).
 
+**Morning Agent UI.** A general Agent using Pi's native persistent sessions, RPC execution,
+tools, model/context management, Skills, extensions and MCP. Gateway credentials have a GUI
+lifecycle, macOS Keychain storage and real model connection tests.
+Pulse is a background capability: the model interprets natural-language goals and relevant
+page content, then creates a reviewable watch. No preset example tasks or condition forms.
+Build `apps/pulse`, install `apps/agent-runtime` with `npm ci --ignore-scripts` and
+`npm run prepare:runtime`, then run `uv run python scripts/pulse.py` from the repository root.
+The local UI is `http://127.0.0.1:8788`. Use `--workspace` to select the coding workspace.
+See the [Agent runbook](docs/runbooks/pulse.md) and [Pi provenance](apps/agent-runtime/THIRD_PARTY.md).
+
 **OpenAI-compatible endpoints.** The sidecar speaks the OpenAI Responses API. Any relay, proxy
 or self-hosted gateway works if it implements that API with image input and either the
 `computer` tool or plain function calling (`--variant function`, for relays that answer
@@ -179,9 +189,10 @@ deterministic eye so that watching costs nothing. Details and sources:
 - The desktop runtime is macOS-only, needs Node and the Accessibility / Screen Recording
   permissions, and does one operation at a time. Its credential-field detection is keyword
   based and errs towards handing control to a human.
-- **No production planner model ships yet.** The built-in reasoning adapter is scripted, so a
-  deployed task with `"on_met": "plan"` proposes no action. Watch-and-notify tasks
-  (`"on_met": "notify"`) need no model and work end to end; see
+- **The kernel's default planner remains scripted.** A default deployment with
+  `"on_met": "plan"` proposes no action. The separate Morning launcher connects a real
+  semantic understanding adapter and Pi execution loop when model credentials are configured.
+  Deterministic watch-and-notify tasks (`"on_met": "notify"`) need no model; see
   [examples/web_watch_todomvc](examples/web_watch_todomvc/), which includes a real run.
 - Inbox notifications are stored and shown as confirmed actions in the timeline, but no API
   endpoint lists inbox messages yet.

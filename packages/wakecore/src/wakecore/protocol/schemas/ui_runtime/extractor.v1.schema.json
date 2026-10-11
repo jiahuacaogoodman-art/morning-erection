@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:wakecore:schema:ui-runtime:extractor:v1",
   "title": "Declarative extractor v1 (DOM -> records, deterministic, no model)",
-  "description": "Exactly one of `table` / `list`, and exactly one of `key_attr` / `key_field`. The runtime's validator is authoritative and additionally checks cross-field rules (key_field names a column, patterns compile, `group` exists, defaults match the type). See docs/extractor.md.",
+  "description": "Exactly one of `table` / `list`, and exactly one of `key_attr` / `key_field` / `key_value`. The runtime's validator is authoritative and additionally checks cross-field rules (key_field names a column, patterns compile, `group` exists, defaults match the type). See docs/extractor.md.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -69,6 +69,12 @@
     },
     "login": {
       "$ref": "common.v1.schema.json#/$defs/login_markers"
+    },
+    "key_value": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "Stable literal identity for a single scalar record; multiple items still fail duplicate-key validation."
     }
   },
   "oneOf": [
@@ -232,8 +238,17 @@
             "key_attr"
           ],
           "not": {
-            "required": [
-              "key_field"
+            "anyOf": [
+              {
+                "required": [
+                  "key_field"
+                ]
+              },
+              {
+                "required": [
+                  "key_value"
+                ]
+              }
             ]
           }
         },
@@ -242,8 +257,36 @@
             "key_field"
           ],
           "not": {
-            "required": [
-              "key_attr"
+            "anyOf": [
+              {
+                "required": [
+                  "key_attr"
+                ]
+              },
+              {
+                "required": [
+                  "key_value"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "required": [
+            "key_value"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "key_attr"
+                ]
+              },
+              {
+                "required": [
+                  "key_field"
+                ]
+              }
             ]
           }
         }

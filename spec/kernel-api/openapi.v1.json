@@ -190,7 +190,9 @@
               "profile": {
                 "enum": [
                   "grades.v1",
-                  "generic_watch.v1"
+                  "generic_watch.v1",
+                  "web_watch.v1",
+                  "semantic_watch.v1"
                 ],
                 "type": "string"
               }
@@ -1373,6 +1375,79 @@
         "summary": "Cancel a task"
       }
     },
+    "/v1/tasks/{id}/check": {
+      "post": {
+        "operationId": "post_tasks_id_check",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Same key + same request replays the first response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Expected task version (or body expected_version)",
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "POST /v1/tasks/{id}/check"
+      }
+    },
     "/v1/tasks/{id}/pause": {
       "post": {
         "operationId": "post_tasks_id_pause",
@@ -1444,6 +1519,49 @@
           }
         ],
         "summary": "Pause a task"
+      }
+    },
+    "/v1/tasks/{id}/pulse": {
+      "get": {
+        "operationId": "get_tasks_id_pulse",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK (201 on create, 202 when ingress accepts)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api_error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (code, retryable, trace_id)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "GET /v1/tasks/{id}/pulse"
       }
     },
     "/v1/tasks/{id}/resume": {

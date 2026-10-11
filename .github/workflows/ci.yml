@@ -122,6 +122,21 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
       - run: uv run playwright install --with-deps chromium
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/pulse/package-lock.json
+      - name: Build the Pulse application
+        working-directory: apps/pulse
+        run: |
+          npm ci
+          npm run build
+      - name: Install Pi for native GUI contracts
+        working-directory: apps/agent-runtime
+        run: |
+          npm ci --ignore-scripts
+          npm run prepare:runtime
       - run: uv run pytest -q tests/ui
       - name: Keep artifacts of failed runs
         if: failure()
@@ -131,5 +146,26 @@ jobs:
           path: /tmp/pytest-of-*/**/artifacts/
           if-no-files-found: ignore
           retention-days: 7
+
+  agent-runtime:
+    name: Native Pi sessions, tools and credential contracts
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/agent-runtime/package-lock.json
+      - name: Install and verify the Pi adapter
+        working-directory: apps/agent-runtime
+        run: |
+          npm ci --ignore-scripts
+          npm run prepare:runtime
+          npm audit
+          npm test
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --all-packages --all-extras --group dev
+      - run: uv run pytest -q tests/unit/test_native_pi.py tests/unit/test_gateway_credentials.py
 
   # tests/real (public websites, real model, API key) never runs in CI.

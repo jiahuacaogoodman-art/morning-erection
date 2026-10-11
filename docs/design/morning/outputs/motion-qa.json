@@ -1,0 +1,78 @@
+{
+  "final_frame_changed_pixels": 0,
+  "product_hold_changed_pixels": 0,
+  "layer_samples": {
+    "300": {
+      "shadow": {
+        "transform": "matrix(0.969524, 0, 0, 1, 0, 0)",
+        "opacity": "0.878097"
+      },
+      "sun": {
+        "transform": "matrix(1, 0, 0, 1, 0, 282.043)",
+        "opacity": "0.663241"
+      },
+      "base": {
+        "transform": "matrix(0.98615, 0, 0, 0.98615, 0, 14.8497)",
+        "opacity": "1"
+      },
+      "rear": {
+        "transform": "matrix(0.999537, -0.030419, 0.030419, 0.999537, -18.5323, 21.8811)",
+        "opacity": "1"
+      },
+      "front": {
+        "transform": "matrix(0.999018, 0.0442961, -0.0442961, 0.999018, 20.3415, 24.7451)",
+        "opacity": "0.984476"
+      }
+    },
+    "700": {
+      "shadow": {
+        "transform": "matrix(0.997973, 0, 0, 1, 0, 0)",
+        "opacity": "0.99189"
+      },
+      "sun": {
+        "transform": "matrix(1, 0, 0, 1, 0, 15.5836)",
+        "opacity": "1"
+      },
+      "base": {
+        "transform": "matrix(1.00363, 0, 0, 1.00363, 0, -2.63181)",
+        "opacity": "1"
+      },
+      "rear": {
+        "transform": "matrix(0.999903, 0.0139506, -0.0139506, 0.999903, -4.0038, -8.99192)",
+        "opacity": "1"
+      },
+      "front": {
+        "transform": "matrix(0.999957, -0.0092538, 0.0092538, 0.999957, 5.33769, -4.34714)",
+        "opacity": "1"
+      }
+    },
+    "1100": {
+      "shadow": {
+        "transform": "matrix(1, 0, 0, 1, 0, 0)",
+        "opacity": "1"
+      },
+      "sun": {
+        "transform": "matrix(1, 0, 0, 1, 0, -8.0724)",
+        "opacity": "1"
+      },
+      "base": {
+        "transform": "matrix(1.00182, 0, 0, 1.00182, 0, -1.36447)",
+        "opacity": "1"
+      },
+      "rear": {
+        "transform": "matrix(0.999997, 0.0022544, -0.0022544, 0.999997, -0.645838, -1.45313)",
+        "opacity": "1"
+      },
+      "front": {
+        "transform": "matrix(0.999975, -0.00712317, 0.00712317, 0.999975, 3.40109, -3.40109)",
+        "opacity": "1"
+      }
+    }
+  },
+  "loop_seam_changed_pixels": 0,
+  "loop_near_seam_changed_pixels": 0,
+  "reduced_motion_changed_pixels": 0,
+  "reduced_motion_active_animations": 0,
+  "accessibility_violations": [],
+  "console_errors": []
+}

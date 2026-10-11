@@ -9,3 +9,6 @@ dist/
 node_modules/
 *.egg-info/
 .claude/
+.pulse/
+apps/pulse/dist/
+*.tsbuildinfo

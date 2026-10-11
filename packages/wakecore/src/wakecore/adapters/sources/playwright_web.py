@@ -62,7 +62,8 @@ class PlaywrightWebSource:
         excerpt = {k: r[k] for k in ("title", "url") if isinstance(r.get(k), str)}
         if r.get("outcome") != "SUCCESS":
             return _fail(_OUTCOMES.get(r.get("outcome"), ObservationOutcome.UNAVAILABLE),
-                         str(r.get("error_code") or "ui_runtime_error"), now, excerpt=excerpt)
+                         str(r.get("error_code") or "ui_runtime_error"), now, excerpt=excerpt,
+                         retry_after=r.get("retry_after_seconds"))
         records: dict[str, dict[str, Any]] = r.get("records") or {}
         wanted = scope.get(self.target_key)
         wanted = list(wanted) if isinstance(wanted, list) else sorted(records)

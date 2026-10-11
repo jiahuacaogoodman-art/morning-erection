@@ -24,17 +24,21 @@ def _busy(recovered: dict[str, Any]) -> bool:
     return total > 0
 
 
-def step_once(ctx: KernelContext, worker_id: str, *, max_steps: int = 100) -> dict[str, int]:
+def step_once(ctx: KernelContext, worker_id: str, *, max_steps: int = 100, stop: Optional[Any] = None) -> dict[str, int]:
     stats = {"fired": 0, "steps": 0, "dispatched": 0, "recovered": 0}
     stats["fired"] = len(tick(ctx))
     rec = recover(ctx)
     stats["recovered"] = int(_busy({k: v for k, v in rec.items() if k != "reconcile"}) or
                              rec["reconcile"]["confirmed"] + rec["reconcile"]["no_effect"] > 0)
     for _ in range(max_steps):
+        if stop is not None and stop.is_set():
+            return stats
         if run_next(ctx, worker_id) is None:
             break
         stats["steps"] += 1
     for _ in range(max_steps):
+        if stop is not None and stop.is_set():
+            return stats
         if dispatch_once(ctx, worker_id) is None:
             break
         stats["dispatched"] += 1
@@ -51,10 +55,10 @@ def run_until_idle(ctx: KernelContext, worker_id: str = "worker-1", *, max_round
     return rounds
 
 
-def serve(ctx: KernelContext, worker_id: str, *, idle_sleep: float = 1.0, stop: Optional[Any] = None) -> None:
+def serve(ctx: KernelContext, worker_id: str, *, idle_sleep: float = 1.0, stop: Optional[Any] = None, max_steps: int = 100) -> None:
     while stop is None or not stop.is_set():
         try:
-            stats = step_once(ctx, worker_id)
+            stats = step_once(ctx, worker_id, max_steps=max_steps, stop=stop)
         except Exception:  # noqa: BLE001 - keep the worker alive; leases make work recoverable
             log.exception("worker round failed")
             stats = {}

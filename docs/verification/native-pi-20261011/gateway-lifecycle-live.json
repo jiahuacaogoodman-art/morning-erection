@@ -1,0 +1,59 @@
+{
+  "saved_in_keychain": true,
+  "first_connection": {
+    "category": "connected",
+    "latency_ms": 1817,
+    "message": "认证和模型调用成功。",
+    "model": "gpt-5.6-sol",
+    "ok": true,
+    "tested_at": "2026-10-10T20:12:10.481Z",
+    "usage": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "cost": {
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "input": 0.000124,
+        "output": 0.00016,
+        "total": 0.000284
+      },
+      "input": 31,
+      "output": 8,
+      "reasoning": 0,
+      "totalTokens": 39
+    }
+  },
+  "invalid_credential": {
+    "category": "authentication",
+    "latency_ms": 227,
+    "message": "Gateway 拒绝了认证，请检查或更新凭据。",
+    "ok": false,
+    "tested_at": "2026-10-10T20:12:10.734Z"
+  },
+  "restored_connection": {
+    "category": "connected",
+    "latency_ms": 2056,
+    "message": "认证和模型调用成功。",
+    "model": "gpt-5.6-sol",
+    "ok": true,
+    "tested_at": "2026-10-10T20:12:13.237Z",
+    "usage": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "cost": {
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "input": 0.000124,
+        "output": 0.00016,
+        "total": 0.000284
+      },
+      "input": 31,
+      "output": 8,
+      "reasoning": 0,
+      "totalTokens": 39
+    }
+  },
+  "credential_and_profile_deleted": true,
+  "deleted_configuration_stays_deleted": true,
+  "no_secret_in_public_metadata": true
+}

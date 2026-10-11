@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wakecore:schema:ui-runtime:inspect:v1",
+  "title": "POST /v1/inspect",
+  "$ref": "#/$defs/request",
+  "$defs": {
+    "request": {
+      "type": "object", "additionalProperties": false, "required": ["session_ref", "url", "origins"],
+      "properties": {
+        "session_ref": {"$ref": "common.v1.schema.json#/$defs/session_ref"},
+        "url": {"$ref": "common.v1.schema.json#/$defs/url"},
+        "origins": {"$ref": "common.v1.schema.json#/$defs/origins"}
+      }
+    },
+    "response": {
+      "type": "object", "required": ["outcome", "error_code"],
+      "properties": {
+        "outcome": {"$ref": "common.v1.schema.json#/$defs/outcome"},
+        "error_code": {"type": ["string", "null"]},
+        "candidates": {"type": "array", "maxItems": 80, "items": {"type": "object",
+          "required": ["selector", "label", "value", "numeric"],
+          "properties": {"selector": {"type": "string"}, "label": {"type": "string"},
+            "value": {"type": "string"}, "numeric": {"type": "boolean"}, "context": {"type": "string"}}}},
+        "url": {"type": "string"}, "title": {"type": "string"}
+      }
+    }
+  }
+}

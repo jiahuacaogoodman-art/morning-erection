@@ -646,7 +646,8 @@
                   "act_not_found",
                   "session_not_found",
                   "runtime_timeout",
-                  "internal"
+                  "internal",
+                  "human_login_in_progress"
                 ]
               },
               "details": {
@@ -811,8 +812,17 @@
             "oneOf": [
               {
                 "not": {
-                  "required": [
-                    "key_field"
+                  "anyOf": [
+                    {
+                      "required": [
+                        "key_field"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "key_value"
+                      ]
+                    }
                   ]
                 },
                 "required": [
@@ -821,18 +831,46 @@
               },
               {
                 "not": {
-                  "required": [
-                    "key_attr"
+                  "anyOf": [
+                    {
+                      "required": [
+                        "key_attr"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "key_value"
+                      ]
+                    }
                   ]
                 },
                 "required": [
                   "key_field"
                 ]
+              },
+              {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "key_attr"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "key_field"
+                      ]
+                    }
+                  ]
+                },
+                "required": [
+                  "key_value"
+                ]
               }
             ]
           }
         ],
-        "description": "Exactly one of `table` / `list`, and exactly one of `key_attr` / `key_field`. The runtime's validator is authoritative and additionally checks cross-field rules (key_field names a column, patterns compile, `group` exists, defaults match the type). See docs/extractor.md.",
+        "description": "Exactly one of `table` / `list`, and exactly one of `key_attr` / `key_field` / `key_value`. The runtime's validator is authoritative and additionally checks cross-field rules (key_field names a column, patterns compile, `group` exists, defaults match the type). See docs/extractor.md.",
         "oneOf": [
           {
             "not": {
@@ -872,6 +910,12 @@
           },
           "key_field": {
             "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "key_value": {
+            "description": "Stable literal identity for a single scalar record; multiple items still fail duplicate-key validation.",
+            "maxLength": 200,
             "minLength": 1,
             "type": "string"
           },
@@ -977,6 +1021,86 @@
         "title": "GET /v1/health",
         "type": "object"
       },
+      "inspect.v1": {
+        "$defs": {
+          "request": {
+            "additionalProperties": false,
+            "properties": {
+              "origins": {
+                "$ref": "#/components/schemas/common.v1/$defs/origins"
+              },
+              "session_ref": {
+                "$ref": "#/components/schemas/common.v1/$defs/session_ref"
+              },
+              "url": {
+                "$ref": "#/components/schemas/common.v1/$defs/url"
+              }
+            },
+            "required": [
+              "session_ref",
+              "url",
+              "origins"
+            ],
+            "type": "object"
+          },
+          "response": {
+            "properties": {
+              "candidates": {
+                "items": {
+                  "properties": {
+                    "context": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "numeric": {
+                      "type": "boolean"
+                    },
+                    "selector": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "selector",
+                    "label",
+                    "value",
+                    "numeric"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 80,
+                "type": "array"
+              },
+              "error_code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "outcome": {
+                "$ref": "#/components/schemas/common.v1/$defs/outcome"
+              },
+              "title": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "outcome",
+              "error_code"
+            ],
+            "type": "object"
+          }
+        },
+        "$ref": "#/components/schemas/inspect.v1/$defs/request",
+        "title": "POST /v1/inspect"
+      },
       "observe.v1": {
         "$defs": {
           "request": {
@@ -1030,6 +1154,15 @@
                   "$ref": "#/components/schemas/common.v1/$defs/record"
                 },
                 "type": "object"
+              },
+              "retry_after_seconds": {
+                "description": "Server HTTP Retry-After lower bound; optional.",
+                "maximum": 604800,
+                "minimum": 1,
+                "type": [
+                  "integer",
+                  "null"
+                ]
               },
               "title": {
                 "type": "string"
@@ -1112,7 +1245,11 @@
                 "enum": [
                   "open",
                   "closed",
-                  "busy"
+                  "busy",
+                  "opening",
+                  "human_login",
+                  "closing",
+                  "login_window_failed"
                 ]
               }
             },
@@ -1128,6 +1265,42 @@
         "$ref": "#/components/schemas/session.v1/$defs/session",
         "description": "Never returns cookies, profile paths or page content. `closed` = no browser running for it (a human may log in with the profile); `busy` = an operation is running.",
         "title": "Browser sessions: GET /v1/sessions, GET /v1/sessions/{ref}, POST /v1/sessions/{ref}/release"
+      },
+      "session_login.v1": {
+        "$defs": {
+          "request": {
+            "additionalProperties": false,
+            "properties": {
+              "finish": {
+                "type": "boolean"
+              },
+              "session_ref": {
+                "$ref": "#/components/schemas/common.v1/$defs/session_ref"
+              },
+              "url": {
+                "$ref": "#/components/schemas/common.v1/$defs/url"
+              }
+            },
+            "required": [
+              "session_ref",
+              "url"
+            ],
+            "type": "object"
+          },
+          "response": {
+            "properties": {
+              "state": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "state"
+            ],
+            "type": "object"
+          }
+        },
+        "$ref": "#/components/schemas/session_login.v1/$defs/request",
+        "title": "POST /v1/sessions/login"
       },
       "verify.v1": {
         "$defs": {
@@ -1517,6 +1690,49 @@
         "summary": "Liveness, protocol version and session count"
       }
     },
+    "/v1/inspect": {
+      "post": {
+        "operationId": "post_inspect",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/inspect.v1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inspect.v1/$defs/response"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "WakeCore-Protocol": {
+                "$ref": "#/components/headers/Protocol"
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (see error.code)"
+          }
+        },
+        "summary": "Read-only content choices for Pulse onboarding"
+      }
+    },
     "/v1/observe": {
       "post": {
         "operationId": "post_observe",
@@ -1591,6 +1807,49 @@
           }
         },
         "summary": "Browser sessions (no cookies, no paths)"
+      }
+    },
+    "/v1/sessions/login": {
+      "post": {
+        "operationId": "post_sessions_login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/session_login.v1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/session_login.v1/$defs/response"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "WakeCore-Protocol": {
+                "$ref": "#/components/headers/Protocol"
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error.v1"
+                }
+              }
+            },
+            "description": "Error envelope (see error.code)"
+          }
+        },
+        "summary": "Open or finish an explicit human login window"
       }
     },
     "/v1/sessions/release": {

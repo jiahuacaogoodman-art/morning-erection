@@ -57,6 +57,7 @@ from ..ports.faults import SimulatedCrash
 from ..ports.observation import ObservationRequest, ObservationResult
 from ..ports.reasoning import ContextBundle, DecisionProposal, ModelTimeout, PlanProposal
 from ..repo import Repo
+from ..scheduling.adaptive import apply_polling
 from ..scheduling.followup import admit_followup
 from ..scheduling.waits import register_wait
 from .leases import claim_next_step, release_slot, verify_for_commit
@@ -363,6 +364,7 @@ def _commit_observation(repo: Repo, ctx: KernelContext, rt: TaskRuntime, step: S
         rt = enter_draining(repo, ctx.ids, rt, reason="goal_satisfied")
         rt = maybe_complete(repo, ctx.ids, rt, notify_capability=ctx.config.notify_capability) or rt
     repo.change(rt, last_progress_at=now)
+    apply_polling(repo, ctx, rt, spec, step, obs, t, cp.trusted_snapshot)
 
     if step.kind is StepKind.PROCESS_DELIVERY:
         _set_delivery(repo, step, DeliveryStatus.PROCESSED, decision_ref=decision_id)
@@ -628,8 +630,13 @@ def _judge(ctx: KernelContext, step: Step) -> dict[str, Any]:
         actions, steps = [], []
         causal = step.input.get("event_id")
         if d.route in (Route.TEMPLATE_ACTION, Route.HUMAN_REVIEW):
+            spec = load_spec(repo, rt)
+            payload = review_notification(d.judge_changes, d.reason_code)
+            if d.route is Route.TEMPLATE_ACTION and spec.decision_profile == "semantic_watch.v1":
+                payload = {"recipient": "self", "title": spec.decision_params.get("title", "等待条件已满足"),
+                           "body": d.reason_code, "data": {"condition": spec.decision_params["condition"]}}
             aid = _notify(repo, ctx, rt, step, logical_action="notify.judged",
-                          payload=review_notification(d.judge_changes, d.reason_code), reason_code=d.reason_code,
+                          payload=payload, reason_code=d.reason_code,
                           causal_event_id=causal)
             actions += [aid] if aid else []
         elif d.route is Route.PLANNER and rt.lifecycle is TaskLifecycle.ACTIVE:

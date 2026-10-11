@@ -70,7 +70,7 @@ class Request:
                 length = int(self.environ.get("CONTENT_LENGTH") or 0)
             except ValueError:
                 length = 0
-            if length > MAX_BODY:
+            if length > self.environ.get("wakecore.max_body", MAX_BODY):
                 raise _HttpError(413, "PAYLOAD_TOO_LARGE", "request body too large")
             self._raw = self.environ["wsgi.input"].read(length) if length else b""
         return self._raw
@@ -127,6 +127,8 @@ class WakeCoreAPI:
         add("POST", r"/v1/tasks/(?P<id>[^/]+)/cancel", self._control("cancel"))
         add("GET", r"/v1/tasks/(?P<id>[^/]+)", self._get_task)
         add("GET", r"/v1/tasks/(?P<id>[^/]+)/timeline", lambda r, p, a: Response(200, s.timeline(p, a["id"])))
+        add("GET", r"/v1/tasks/(?P<id>[^/]+)/pulse", lambda r, p, a: Response(200, s.pulse(p, a["id"])))
+        add("POST", r"/v1/tasks/(?P<id>[^/]+)/check", lambda r, p, a: s.check_task(p, a["id"], idem_key=_idem(r)))
         add("GET", r"/v1/runs/(?P<id>[^/]+)", lambda r, p, a: Response(200, s.get_run(p, a["id"])))
         add("GET", r"/v1/evidence/(?P<id>[^/]+)", lambda r, p, a: Response(200, s.get_evidence(p, a["id"])))
         add("POST", r"/v1/approvals/(?P<id>[^/]+)/approve", self._approve)

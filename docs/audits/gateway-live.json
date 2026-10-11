@@ -1,0 +1,24 @@
+{
+  "gateway": "https://pixelstarrysky.xyz",
+  "model": "gpt-5.6-sol",
+  "protocol": "openai-responses",
+  "custom_modules": false,
+  "invalid_credentials": "authentication",
+  "generation": {
+    "state": "succeeded",
+    "latency_ms": 3600
+  },
+  "tools": [
+    "read",
+    "write"
+  ],
+  "artifact_verified": true,
+  "restart": {
+    "same_session": true,
+    "message_count": 7,
+    "configuration_applied": true
+  },
+  "secret_not_in_public_or_history": true,
+  "credential_removal": true,
+  "ok": true
+}

@@ -62,12 +62,14 @@ from wakecore.protocol.jsonschema_lite import SchemaError, registry
 
 from ._version import __version__
 from .browser import extractor as ex
+from .browser.inspect import inspect_page
 from .browser.observer import observe
 from .cua.loop import ActLoop
 from .cua.openai import HISTORY_MODES, VARIANTS, ResponsesClient
 from .cua.selfcheck import check_model, render
 from .journal import Journal, sent_mutations
 from .policy import SESSION_REF
+from .sessions.login import HumanLogin
 from .sessions.manager import SessionManager
 from .verify.verifier import verify
 
@@ -116,6 +118,7 @@ class Runtime:
         os.makedirs(state_dir, mode=0o700, exist_ok=True)
         self.state_dir = state_dir
         self.sessions = SessionManager(state_dir, headless=headless)
+        self.human_login = HumanLogin(self.sessions)
         self.journal = Journal(state_dir)
         self.interrupted_on_start = self.journal.mark_interrupted()
         self.client = client or ResponsesClient()
@@ -128,10 +131,15 @@ class Runtime:
 
     # -------------------------------------------------------------- operations
     def _on(self, ref: str, fn: Any, timeout: float) -> Any:
-        worker = self.sessions.worker(ref)
-        return worker.submit(fn).result(timeout=timeout)
+        with self.human_login.lock:
+            if self.human_login.busy(ref):
+                raise ApiError(409, "human_login_in_progress", "浏览器正在等待你完成登录")
+            future = self.sessions.worker(ref).submit(fn)
+        return future.result(timeout=timeout)
 
     def observe(self, b: dict[str, Any]) -> dict[str, Any]:
+        if self.human_login.busy(b["session_ref"]):
+            return {"outcome": "AUTH_REQUIRED", "error_code": "human_login_in_progress", "records": {}}
         kw, wait = _timeouts(b)
 
         def op(w: Any) -> dict[str, Any]:
@@ -237,9 +245,19 @@ class Runtime:
 
     def session(self, ref: str) -> dict[str, Any]:
         d = self.sessions.describe(ref)
+        with self.human_login.lock:
+            human = self.human_login.entries.get(ref)
+            if human:
+                d = {"session_ref": ref, "state": human["state"], "profile_exists": True, "last_used_at": None} if d is None else d
+                if human["state"] != "closed":
+                    d["state"] = human["state"]
         if d is None:
             raise ApiError(404, "session_not_found", "no profile and no browser for this session_ref")
         return d
+
+    def session_list(self) -> list[dict[str, Any]]:
+        refs = {d["session_ref"] for d in self.sessions.describe_all()} | set(self.human_login.entries)
+        return [self.session(ref) for ref in sorted(refs)]
 
     def release(self, ref: str) -> dict[str, Any]:
         return {"session_ref": ref, "released": self.sessions.release(ref)}
@@ -298,6 +316,12 @@ def _status_key(q: dict[str, list[str]]) -> str:
 
 
 ROUTES = [
+    Route("POST", "/v1/sessions/login", "session_login.v1.schema.json", lambda rt, b, p, q:
+          rt.human_login.finish(b["session_ref"]) if b.get("finish") else rt.human_login.begin(b["session_ref"], b["url"]),
+          response="session_login.v1.schema.json#/$defs/response", summary="Open or finish an explicit human login window"),
+    Route("POST", "/v1/inspect", "inspect.v1.schema.json", lambda rt, b, p, q: rt._on(
+        b["session_ref"], lambda w: inspect_page(w, rt.faults, url=b["url"], origins=b["origins"]), 40),
+        response="inspect.v1.schema.json#/$defs/response", summary="Read-only content choices for Pulse onboarding"),
     Route("GET", "/v1/health", None, lambda rt, b, p, q: rt.health(), response="health.v1.schema.json",
           summary="Liveness, protocol version and session count"),
     Route("GET", "/v1/capabilities", None, lambda rt, b, p, q: rt.capabilities(),
@@ -318,7 +342,7 @@ ROUTES = [
     Route("GET", "/v1/act/status", None, lambda rt, b, p, q: rt.act_status(_status_key(q)),
           response="act.v1.schema.json#/$defs/status_response", summary="Journal status of an act (v0.3)",
           query=("key",), deprecated=True),
-    Route("GET", "/v1/sessions", None, lambda rt, b, p, q: {"sessions": rt.sessions.describe_all()},
+    Route("GET", "/v1/sessions", None, lambda rt, b, p, q: {"sessions": rt.session_list()},
           response="session.v1.schema.json#/$defs/list_response", summary="Browser sessions (no cookies, no paths)"),
     Route("GET", "/v1/sessions/{ref}", None, lambda rt, b, p, q: rt.session(_ref(p)),
           response="session.v1.schema.json#/$defs/session", summary="One browser session"),
@@ -511,6 +535,7 @@ def main(argv: Optional[list[str]] = None) -> None:
     except KeyboardInterrupt:
         pass
     finally:
+        rt.human_login.close_all()
         rt.sessions.close_all()
 
 

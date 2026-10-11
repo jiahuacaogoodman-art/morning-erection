@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="480" viewBox="0 0 1254 1254" fill="none" class="morning-sculpture">
+  <defs>
+    <radialGradient id="ml-sun" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(882 337) rotate(137) scale(700 677)">
+      <stop stop-color="#ffd093"/><stop offset=".12" stop-color="#ff9b57"/><stop offset=".3" stop-color="#f87c43"/><stop offset=".5" stop-color="#e95f2b"/><stop offset=".7" stop-color="#bf3710"/><stop offset="1" stop-color="#b03811"/>
+    </radialGradient>
+    <radialGradient id="ml-sun-light" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(935 372) rotate(156) scale(507 579)">
+      <stop stop-color="#ffeab6" stop-opacity=".42"/><stop offset=".2" stop-color="#ffd48a" stop-opacity=".09"/><stop offset=".52" stop-color="#ffb45d" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ml-rear" x1="343" y1="746" x2="1070" y2="531" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#c5b9a4"/><stop offset=".42" stop-color="#e1d6c3"/><stop offset=".73" stop-color="#f1e9da"/><stop offset="1" stop-color="#faf3e5"/>
+    </linearGradient>
+    <linearGradient id="ml-rear-depth" x1="920" y1="500" x2="664" y2="867" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fffaf0" stop-opacity=".55"/><stop offset=".45" stop-color="#f3eada" stop-opacity="0"/><stop offset="1" stop-color="#9f9583" stop-opacity=".26"/>
+    </linearGradient>
+    <linearGradient id="ml-front" x1="183" y1="637" x2="1001" y2="817" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#c8bca7"/><stop offset=".36" stop-color="#ded3c0"/><stop offset=".72" stop-color="#ede4d2"/><stop offset="1" stop-color="#fff4dc"/>
+    </linearGradient>
+    <linearGradient id="ml-front-shade" x1="601" y1="618" x2="601" y2="854" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fffdf4" stop-opacity=".22"/><stop offset=".43" stop-color="#f7f0e3" stop-opacity="0"/><stop offset="1" stop-color="#8d8473" stop-opacity=".14"/>
+    </linearGradient>
+    <linearGradient id="ml-ceramic" x1="378" y1="1044" x2="839" y2="800" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#171713"/><stop offset=".35" stop-color="#24241f"/><stop offset=".72" stop-color="#353530"/><stop offset="1" stop-color="#48453d"/>
+    </linearGradient>
+    <linearGradient id="ml-rim" x1="184" y1="805" x2="1069" y2="805" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#393a34"/><stop offset=".44" stop-color="#686358"/><stop offset=".84" stop-color="#877d68"/><stop offset="1" stop-color="#c3a477"/>
+    </linearGradient>
+    <linearGradient id="ml-edge" x1="154" y1="735" x2="1041" y2="814" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#aa9e89"/><stop offset=".46" stop-color="#c7bda7"/><stop offset="1" stop-color="#e4d0af"/>
+    </linearGradient>
+    <radialGradient id="ml-shadow">
+      <stop stop-color="#181810" stop-opacity=".32"/><stop offset=".52" stop-color="#29241a" stop-opacity=".12"/><stop offset="1" stop-color="#29241a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="ml-aura">
+      <stop stop-color="#ffc875" stop-opacity=".31"/><stop offset=".7" stop-color="#ffd68e" stop-opacity=".12"/><stop offset="1" stop-color="#ffc875" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="ml-grain" x="-2%" y="-2%" width="104%" height="104%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency=".34" numOctaves="4" seed="12" stitchTiles="stitch" result="noise"/>
+      <feColorMatrix in="noise" type="saturate" values="0"/>
+      <feComponentTransfer><feFuncR type="linear" slope=".45" intercept=".76"/><feFuncG type="linear" slope=".45" intercept=".76"/><feFuncB type="linear" slope=".45" intercept=".76"/></feComponentTransfer>
+      <feComposite in2="SourceAlpha" operator="in" result="texture"/>
+      <feBlend in="SourceGraphic" in2="texture" mode="multiply"/>
+    </filter>
+    <filter id="ml-contact" x="-8%" y="-15%" width="116%" height="140%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="4"/>
+    </filter>
+    <filter id="ml-aura-blur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="15"/></filter>
+    <clipPath id="ml-sun-window"><path d="M0 0H1254V816H0Z"/></clipPath>
+    <path id="ml-rear-shape" d="M181 746C390 724 561 624 764 539C913 477 1052 463 1137 547C1133 647 1103 751 1050 796C1014 826.566 446 856 201 808C193 790 185 769 181 746Z"/>
+    <path id="ml-front-shape" d="M126 639C269 544 410 570 539 634C736 713 871 835 1024 809C854 851 358 849 208 797C176 764 146 698 126 639Z"/>
+    <path id="ml-base-shape" d="M182 805C192 880 269 978 379 1015C504 1050 730 1053 863 1022C981 993 1041 910 1069 805C884 850 362 855 182 805Z"/>
+  </defs>
+  <g data-part="shadow" aria-label="接触阴影">
+    <g data-enter="shadow"><ellipse cx="633" cy="1044" rx="360" ry="23" fill="url(#ml-shadow)" opacity=".44"/></g>
+  </g>
+  <g data-sun-window="true" clip-path="url(#ml-sun-window)">
+    <g data-part="sun" aria-label="太阳">
+      <g data-enter="sun"><g data-live="sun">
+        <ellipse data-detail="aura" cx="660" cy="552" rx="353" ry="347" fill="url(#ml-aura)" filter="url(#ml-aura-blur)"/>
+        <circle cx="630" cy="558" r="315" fill="url(#ml-sun)" filter="url(#ml-grain)"/>
+        <circle cx="630" cy="558" r="315" fill="url(#ml-sun-light)"/>
+        <path d="M594 245C762 222 920 360 944 490" stroke="#ffe6aa" stroke-opacity=".72" stroke-width="2.5" stroke-linecap="round"/>
+      </g></g>
+    </g>
+  </g>
+  <g data-part="base" aria-label="深色底座">
+    <g data-enter="base"><g data-live="base">
+      <use href="#ml-base-shape" fill="url(#ml-ceramic)" filter="url(#ml-grain)"/>
+      <ellipse cx="626" cy="805" rx="444" ry="40" fill="url(#ml-rim)" filter="url(#ml-grain)"/>
+      <path d="M186 815C378 860 867 859 1064 814" stroke="#8e8674" stroke-opacity=".32" stroke-width="3"/>
+      <ellipse cx="628" cy="820" rx="392" ry="24" fill="#12130e" opacity=".33" filter="url(#ml-contact)"/>
+    </g></g>
+  </g>
+  <g data-part="rear" aria-label="后层浅色层片">
+    <g data-enter="rear"><g data-live="rear">
+      <use href="#ml-rear-shape" transform="translate(0 5)" fill="#d5c6ad"/>
+      <use href="#ml-rear-shape" fill="url(#ml-rear)" filter="url(#ml-grain)"/>
+      <use href="#ml-rear-shape" fill="url(#ml-rear-depth)"/>
+      <path d="M491 657C588 618 675 576 764 539C913 477 1052 463 1137 547" stroke="#fff9e9" stroke-width="3" stroke-linecap="round"/>
+    </g></g>
+  </g>
+  <g data-part="front" aria-label="前层浅色层片">
+    <g data-enter="front"><g data-live="front">
+      <use href="#ml-front-shape" transform="translate(0 6)" fill="#33291c" opacity=".21" filter="url(#ml-contact)"/>
+      <use href="#ml-front-shape" transform="translate(0 3)" fill="url(#ml-edge)"/>
+      <use href="#ml-front-shape" fill="url(#ml-front)" filter="url(#ml-grain)"/>
+      <use href="#ml-front-shape" fill="url(#ml-front-shade)"/>
+      <path d="M127 638C269 544 410 570 539 634C736 713 871 835 1024 809" stroke="#fff5d9" stroke-width="3" stroke-linecap="round"/>
+    </g></g>
+  </g>
+</svg>

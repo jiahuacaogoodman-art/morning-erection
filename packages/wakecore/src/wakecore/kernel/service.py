@@ -187,7 +187,20 @@ class KernelService:
         req = {"task_id": task_id, "reason": reason, "expected_version": expected_version}
         return self._command(p, "task.cancel", req, idem_key, lambda repo: task_cmd.cancel(
             repo, self.ctx, tenant_id=p.tenant_id, principal=p.subject, task_id=task_id, reason=reason,
-            expected_version=expected_version))
+                                                         expected_version=expected_version))
+
+    def check_task(self, p: Principal, task_id: str, *, idem_key: Optional[str] = None) -> Response:
+        return self._command(p, "task.check", {"task_id": task_id}, idem_key,
+                             lambda repo: task_cmd.check_now(repo, self.ctx, tenant_id=p.tenant_id,
+                                                             principal=p.subject, task_id=task_id))
+
+    def pulse(self, p: Principal, task_id: str) -> dict[str, Any]:
+        from .queries.pulse import project
+
+        task = self.get_task(p, task_id)  # owner check, including approval payloads
+        with tx(self.ctx.store) as repo:
+            self._owned_task(repo, p, task_id)
+            return view(project(repo, self.ctx, p, task))
 
     # ================================================================ approvals / actions
 
@@ -431,4 +444,3 @@ def _explain(rt: TaskRuntime, binding: Optional[SourceBinding], n_in_flight: int
     if n_in_flight:
         msg += f"；{n_in_flight} 个动作在途或结果待确认"
     return msg
-

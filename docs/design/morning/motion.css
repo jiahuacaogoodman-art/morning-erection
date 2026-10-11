@@ -1,0 +1,36 @@
+/* Four physical parts; independent groups for intro, activity and interaction. */
+.morning-logo{--logo-enter-duration:1600ms;--logo-live-duration:3200ms;display:inline-flex;align-items:center;justify-content:center;width:var(--mark-size);height:var(--mark-size);padding:0;border:0;background:none;flex:none;vertical-align:middle;line-height:0;border-radius:16%;isolation:isolate}
+.morning-logo-art{display:block;width:100%;height:100%}.morning-logo svg{display:block;width:100%;height:100%;overflow:visible}
+.morning-logo [data-part],.morning-logo [data-enter],.morning-logo [data-live]{transform-box:view-box;transform-origin:630px 810px}
+.morning-logo [data-part]{transition:transform 320ms cubic-bezier(.22,.68,0,1),opacity 320ms ease}
+.morning-logo [data-part="sun"],.morning-logo [data-live="sun"]{transform-origin:630px 558px}
+.morning-logo.is-interactive{cursor:pointer}.morning-logo.is-interactive:focus-visible{outline:2px solid var(--focus,#a7482b);outline-offset:5px}
+
+.morning-logo.is-intro [data-enter]{animation-duration:var(--logo-enter-duration);animation-timing-function:linear;animation-fill-mode:both;animation-iteration-count:1}
+.morning-logo.is-intro [data-enter="shadow"]{animation-name:logo-shadow-enter}.morning-logo.is-intro [data-enter="base"]{animation-name:logo-base-enter}.morning-logo.is-intro [data-enter="rear"]{animation-name:logo-rear-enter}.morning-logo.is-intro [data-enter="front"]{animation-name:logo-front-enter}.morning-logo.is-intro [data-enter="sun"]{animation-name:logo-sun-enter}
+@keyframes logo-shadow-enter{0%{opacity:0;transform:scaleX(.75);animation-timing-function:cubic-bezier(.22,.68,0,1)}58%,100%{opacity:1;transform:scaleX(1)}}
+@keyframes logo-base-enter{0%{opacity:0;transform:translateY(54px) scale(.96);animation-timing-function:cubic-bezier(.22,.68,0,1)}18%{opacity:1;transform:translateY(16px) scale(.985);animation-timing-function:cubic-bezier(.22,.68,0,1)}58%{opacity:1;transform:translateY(-3px) scale(1.004);animation-timing-function:cubic-bezier(.4,0,.4,1)}82%,100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes logo-rear-enter{0%,8%{opacity:0;transform:translate(-38px,66px) rotate(-5deg);animation-timing-function:cubic-bezier(.22,.68,0,1)}18%{opacity:1;transform:translate(-20px,25px) rotate(-2deg);animation-timing-function:cubic-bezier(.22,.68,0,1)}45%{opacity:1;transform:translate(-4px,-9px) rotate(.8deg);animation-timing-function:cubic-bezier(.4,0,.4,1)}82%,100%{opacity:1;transform:translate(0,0) rotate(0)}}
+@keyframes logo-front-enter{0%,12%{opacity:0;transform:translate(42px,72px) rotate(5deg);animation-timing-function:cubic-bezier(.22,.68,0,1)}22%{opacity:1;transform:translate(20px,24px) rotate(2.5deg);animation-timing-function:cubic-bezier(.22,.68,0,1)}57%{opacity:1;transform:translate(5px,-5px) rotate(-.6deg);animation-timing-function:cubic-bezier(.4,0,.4,1)}92%,100%{opacity:1;transform:translate(0,0) rotate(0)}}
+@keyframes logo-sun-enter{0%,14%{opacity:0;transform:translateY(355px);animation-timing-function:cubic-bezier(.42,0,.3,1)}24%{opacity:1;transform:translateY(245px);animation-timing-function:cubic-bezier(.22,.68,0,1)}78%{opacity:1;transform:translateY(-9px);animation-timing-function:cubic-bezier(.4,0,.4,1)}100%{opacity:1;transform:translateY(0)}}
+
+.morning-logo.is-active [data-live]{animation-duration:var(--logo-live-duration);animation-iteration-count:infinite;animation-timing-function:cubic-bezier(.45,0,.55,1);animation-fill-mode:both}
+.morning-logo.is-active [data-live="sun"]{animation-name:logo-sun-live}.morning-logo.is-active [data-live="rear"]{animation-name:logo-rear-live}.morning-logo.is-active [data-live="front"]{animation-name:logo-front-live}
+@keyframes logo-sun-live{0%,100%{transform:translateY(0)}42%{transform:translateY(-25px)}70%{transform:translateY(-7px)}}
+@keyframes logo-rear-live{0%,100%{transform:translate(0,0) rotate(0)}48%{transform:translate(12px,-9px) rotate(1.15deg)}74%{transform:translate(2px,-2px) rotate(.25deg)}}
+@keyframes logo-front-live{0%,100%{transform:translate(0,0) rotate(0)}54%{transform:translate(-11px,4px) rotate(-.9deg)}78%{transform:translate(-2px,1px) rotate(-.15deg)}}
+
+:is(.brand:hover,.brand:focus-visible,.sidebar-art:hover) .morning-logo [data-part="sun"],.morning-logo.is-interactive:is(:hover,:focus-visible) [data-part="sun"]{transform:translateY(-42px)}
+:is(.brand:hover,.brand:focus-visible,.sidebar-art:hover) .morning-logo [data-part="rear"],.morning-logo.is-interactive:is(:hover,:focus-visible) [data-part="rear"]{transform:translate(28px,-14px) rotate(1.6deg)}
+:is(.brand:hover,.brand:focus-visible,.sidebar-art:hover) .morning-logo [data-part="front"],.morning-logo.is-interactive:is(:hover,:focus-visible) [data-part="front"]{transform:translate(-25px,9px) rotate(-1.3deg)}
+.morning-logo.is-interactive:active [data-part="base"]{transform:translateY(5px) scaleY(.985)}
+
+.morning-logo:not(.is-intro) [data-sun-window],.morning-logo.is-static [data-sun-window],.morning-logo.is-exploded [data-sun-window]{clip-path:none}
+.morning-logo.is-exploded [data-part="sun"]{transform:translate(-110px,-210px)}.morning-logo.is-exploded [data-part="rear"]{transform:translate(85px,5px) rotate(3deg)}.morning-logo.is-exploded [data-part="front"]{transform:translate(-70px,80px) rotate(-3deg)}.morning-logo.is-exploded [data-part="base"]{transform:translateY(175px)}.morning-logo.is-exploded [data-part="shadow"]{transform:translateY(180px);opacity:.4}
+
+.brand .morning-logo{--logo-enter-duration:1100ms;margin:-8px -3px -8px -5px}
+.sidebar-art .morning-logo{width:148px;height:138px}.welcome-art .morning-logo{width:100%;height:100%;position:relative;z-index:1}.welcome-art:after{pointer-events:none}
+.composer-identity>.morning-logo{margin:-3px;padding:0;border:0}.tl-agent-icon .morning-logo{margin:-4px}
+@media(max-height:800px) and (min-width:721px){.sidebar-art .morning-logo{width:115px;height:98px}}
+@media(max-width:720px){.sidebar-art .morning-logo{height:130px}.tl-agent-icon .morning-logo{margin:-4px -6px}}
+@media(prefers-reduced-motion:reduce){.morning-logo [data-enter],.morning-logo [data-live]{animation:none!important;transform:none!important;opacity:1!important}.morning-logo [data-part]{transition:none!important}.morning-logo:not(.is-exploded) [data-part]{transform:none!important;opacity:1!important}.morning-logo.is-exploded [data-sun-window]{clip-path:none}}
