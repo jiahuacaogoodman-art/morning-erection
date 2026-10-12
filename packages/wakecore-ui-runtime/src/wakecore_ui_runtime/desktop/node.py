@@ -172,6 +172,23 @@ class ComputerNode:
                 "screen_recording_permission": screen_permission(),
                 "accessibility_permission": accessibility_permission()}
 
+    def open_system_settings(self, permission):
+        """Open System Settings to the exact privacy pane — no misleading dialog,
+        no python3 impersonation. The user grants access in the native macOS UI."""
+        if sys.platform != "darwin":
+            raise ComputerError("unsupported_platform", "系统设置只能在 macOS 上打开。")
+        urls = {
+            "accessibility": "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+            "screen_recording": "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
+        }
+        url = urls.get(permission)
+        if not url:
+            raise ComputerError("invalid_permission", "请选择 accessibility 或 screen_recording。")
+        subprocess.Popen(["open", url])
+        return {"opened": True, "permission": permission,
+                "accessibility_permission": accessibility_permission(),
+                "screen_recording_permission": screen_permission()}
+
     def inventory(self):
         result = self.bridge.call("list_apps", {})
         if result["is_error"]:
@@ -404,8 +421,7 @@ def make_node_handler(node, token):
                 route = {("GET", "/health"): node.health, ("GET", "/inventory"): node.inventory, ("POST", "/overview"): lambda: node.overview(body),
                          ("POST", "/observe"): lambda: node.observe(body), ("POST", "/screen"): lambda: node.screen(body),
                          ("POST", "/act"): lambda: node.act(body), ("POST", "/permissions"): lambda: node.configure(body),
-                         ("POST", "/request_permissions"): lambda: {"accessibility_permission": accessibility_permission(prompt=True),
-                                                                      "screen_recording_permission": screen_permission()}}.get((self.command, self.path))
+                         ("POST", "/open_system_settings"): lambda: node.open_system_settings(body.get("permission", "accessibility"))}.get((self.command, self.path))
                 if route is None:
                     raise ComputerError("not_found", "设备接口不存在。", 404)
                 value = route()

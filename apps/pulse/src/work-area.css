@@ -33,10 +33,18 @@
 .work-area-resizer:hover::after{background:var(--line)}
 .work-area-resizer.dragging::after,.work-area-resizer:active::after{background:var(--accent)}
 @media(max-width:1024px){.work-area-resizer{display:none}}
-.task-work-area.floating{position:fixed;z-index:40;border:1px solid var(--line);border-radius:14px;resize:both;overflow:hidden;min-width:320px;min-height:260px;box-shadow:0 18px 50px #2a1a0a24,0 2px 8px #2a1a0a14;contain:none}
-.task-work-area.floating .task-work-area-body{height:100%}
-.task-work-area.floating .task-work-area-header{cursor:grab;user-select:none;touch-action:none}
-.task-work-area.floating.dragging{opacity:.94}.task-work-area.floating.dragging .task-work-area-header{cursor:grabbing}
+.task-work-area.floating{position:fixed;z-index:40;border:1px solid var(--line);border-radius:14px;resize:both;overflow:hidden;min-width:300px;min-height:240px;box-shadow:0 24px 60px #1a100622,0 4px 16px #1a100618,0 1px 3px #1a100610;contain:none;background:var(--surface)}
+.task-work-area.floating .task-work-area-body{height:100%;background:var(--surface)}
+/* Floating header: title as drag handle, icon-only tab switcher, no tab strip */
+.task-work-area-header--float{height:40px;padding:0 8px 0 12px;cursor:grab;user-select:none;touch-action:none;background:color-mix(in srgb,var(--surface) 92%,var(--canvas));border-bottom:1px solid var(--line-light)}
+.task-work-area-header--float .float-title{display:flex;align-items:center;gap:6px;flex:1;min-width:0;font-size:11px;font-weight:520;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none}
+.task-work-area-header--float .float-title svg{color:var(--ink-secondary);flex:none}
+.task-work-area-header--float .float-tabs{display:flex;gap:1px;flex:none}
+.task-work-area-header--float .float-tabs [role="tab"]{display:grid;place-items:center;width:26px;height:26px;border-radius:6px;color:var(--ink-tertiary);border:1px solid transparent}
+.task-work-area-header--float .float-tabs [role="tab"]:hover{color:var(--ink-secondary);background:var(--surface-under)}
+.task-work-area-header--float .float-tabs [aria-selected="true"]{color:var(--ink);background:var(--surface-under);border-color:var(--line-light)}
+.task-work-area.floating.dragging{opacity:.92}
+.task-work-area.floating.dragging .task-work-area-header--float{cursor:grabbing}
 .task-work-area-tools{display:flex;gap:2px;flex:none}.task-work-area-tools .icon-button{min-width:27px;width:27px;min-height:27px;height:27px;color:var(--ink-secondary)}
 @media(max-width:1024px){.task-work-area.floating .task-work-area-header .task-work-area-tools>.icon-button:last-child{transform:none}}
 
@@ -46,6 +54,9 @@
 .computer-access label:has(input:checked){border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:color-mix(in srgb,var(--accent) 6%,var(--surface))}
 .computer-access input{width:12px;height:12px;margin:0;flex:none}.computer-access svg{color:var(--accent);flex:none}
 .computer-access span{display:flex;flex-direction:column;min-width:0}.computer-access strong{font-size:11px;font-weight:550;line-height:1.4}.computer-access small{font-size:9px;line-height:1.4;color:var(--ink-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.computer-sys-perms{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap;padding:5px 2px 2px}
+.computer-sys-perms .text-button{display:inline-flex;align-items:center;gap:4px;font-size:10px;min-height:28px;padding:4px 8px;border:1px solid var(--line-light);border-radius:6px;color:var(--accent);background:color-mix(in srgb,var(--accent) 5%,transparent)}
+.computer-sys-perms .text-button:hover{background:color-mix(in srgb,var(--accent) 12%,transparent);border-color:color-mix(in srgb,var(--accent) 40%,var(--line-light))}
 .computer-windows{margin-bottom:10px}.computer-windows header{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--ink-secondary);margin-bottom:6px}.computer-windows header time{margin-left:auto;font-size:9px}
 .computer-window-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:7px}
 .computer-window-tile{display:flex;flex-direction:column;gap:4px;padding:4px;border:1px solid var(--line-light);border-radius:9px;background:var(--surface);text-align:left;min-width:0;transition:border-color .15s,box-shadow .15s}
