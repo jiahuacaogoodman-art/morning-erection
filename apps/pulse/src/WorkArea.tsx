@@ -1,9 +1,9 @@
 import {lazy,Suspense,useEffect,useRef,useState} from 'react'
 import type React from 'react'
-import {Globe,Monitor,TerminalSquare,X,ChevronUp,PictureInPicture2,PanelRight} from 'lucide-react'
+import {Globe,Monitor,TerminalSquare,X,ChevronUp,PictureInPicture2,PanelRight,Zap} from 'lucide-react'
 import {gsap,useGSAP,useReducedMotion} from './Motion'
 import {workspaceCommand,type PreviewRecord,type WorkspaceState,type WorkTab,type WorkTarget} from './task-workspace'
-import type {ComputerJob,PlatformState} from './Platform'
+import {platformCommand,type ComputerJob,type PlatformState} from './Platform'
 import ComputerInspector from './ComputerInspector'
 import {piControl} from './NativePi'
 import './work-area.css'
@@ -104,11 +104,11 @@ export function WorkArea({target,onTarget,platform,jobs,data,error,refresh,refre
         ? <header className="task-work-area-header task-work-area-header--float" onPointerDown={drag}>
             <span className="float-title">{activeTab?.Icon&&<activeTab.Icon size={13}/>}{activeTab?.name}</span>
             <div className="float-tabs" role="tablist" aria-label="切换面板">{tabs.map(({id,name,Icon})=><button type="button" role="tab" key={id} aria-selected={active.kind===id} aria-label={name} title={name} onClick={e=>{e.stopPropagation();setActionError('');onTarget({kind:id})}}><Icon size={13}/></button>)}</div>
-            <div className="task-work-area-tools"><button type="button" className="icon-button" aria-label="停靠到右侧" title="停靠到右侧" onClick={()=>setFloatPref(false)}><PanelRight size={13}/></button><button type="button" className="icon-button" aria-label="收起任务工作区" title="收起" onClick={()=>onTarget(null)}><X size={14}/></button></div>
+            <div className="task-work-area-tools">{active.kind==='computer'&&platform.modules.computer&&<button type="button" className={`icon-button computer-auto-btn ${platform.modules.computer_autonomy?'active':''}`} aria-label={platform.modules.computer_autonomy?'自主执行：关闭':'自主执行：开启'} title={platform.modules.computer_autonomy?'自主模式已开启 · 点击关闭':'点击开启自主模式'} onClick={()=>void platformCommand('computer_autonomy',{enabled:!platform.modules.computer_autonomy}).then(refreshPlatform).catch(()=>{})}><Zap size={13}/></button>}<button type="button" className="icon-button" aria-label="停靠到右侧" title="停靠到右侧" onClick={()=>setFloatPref(false)}><PanelRight size={13}/></button><button type="button" className="icon-button" aria-label="收起任务工作区" title="收起" onClick={()=>onTarget(null)}><X size={14}/></button></div>
           </header>
         : <header className="task-work-area-header" onPointerDown={drag} onDoubleClick={e=>{if(!narrow&&!(e.target as HTMLElement).closest('button'))setFloatPref(v=>!v)}} title={narrow?undefined:'双击浮动'}>
             <div role="tablist" aria-label="任务工作区内容">{tabs.map(({id,name,Icon})=><button type="button" role="tab" key={id} aria-selected={active.kind===id} onClick={()=>{setActionError('');onTarget({kind:id})}}><Icon size={14}/><span>{name}</span>{id==='terminal'&&!!data?.terminals.filter(item=>item.state==='running').length&&<small>{data.terminals.filter(item=>item.state==='running').length}</small>}</button>)}</div>
-            <div className="task-work-area-tools">{!narrow&&<button type="button" className="icon-button" aria-label="浮动窗口" title="浮动，可拖动和调整大小" onClick={()=>setFloatPref(true)}><PictureInPicture2 size={14}/></button>}<button type="button" className="icon-button" aria-label="收起任务工作区" title="收起 · 进程继续运行" onClick={()=>onTarget(null)}>{vertical?<ChevronUp size={15}/>:<X size={15}/>}</button></div>
+            <div className="task-work-area-tools">{active.kind==='computer'&&platform.modules.computer&&<button type="button" className={`icon-button computer-auto-btn ${platform.modules.computer_autonomy?'active':''}`} aria-label={platform.modules.computer_autonomy?'自主执行：关闭':'自主执行：开启'} title={platform.modules.computer_autonomy?'自主模式已开启 · 点击关闭':'点击开启自主模式'} onClick={()=>void platformCommand('computer_autonomy',{enabled:!platform.modules.computer_autonomy}).then(refreshPlatform).catch(()=>{})}><Zap size={13}/></button>}{!narrow&&<button type="button" className="icon-button" aria-label="浮动窗口" title="浮动，可拖动和调整大小" onClick={()=>setFloatPref(true)}><PictureInPicture2 size={14}/></button>}<button type="button" className="icon-button" aria-label="收起任务工作区" title="收起 · 进程继续运行" onClick={()=>onTarget(null)}>{vertical?<ChevronUp size={15}/>:<X size={15}/>}</button></div>
           </header>
       }
     {(error||actionError)&&<div className="work-error" role="alert">{error||actionError}<button type="button" onClick={refresh}>重新读取</button></div>}

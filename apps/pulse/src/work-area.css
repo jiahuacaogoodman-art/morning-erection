@@ -48,13 +48,12 @@
 .task-work-area-tools{display:flex;gap:2px;flex:none}.task-work-area-tools .icon-button{min-width:27px;width:27px;min-height:27px;height:27px;color:var(--ink-secondary)}
 @media(max-width:1024px){.task-work-area.floating .task-work-area-header .task-work-area-tools>.icon-button:last-child{transform:none}}
 
-/* Compact permission/action toolbar in the computer pane header area */
-.computer-toolbar{display:flex;align-items:center;gap:6px;margin-bottom:9px;flex-wrap:wrap}
-.computer-toggle{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:4px 7px;border:1px solid var(--line-light);border-radius:6px;cursor:pointer;color:var(--ink-secondary);background:var(--surface);min-height:27px}
-.computer-toggle:has(input:checked){color:var(--ink);border-color:color-mix(in srgb,var(--accent) 40%,var(--line));background:color-mix(in srgb,var(--accent) 6%,var(--surface))}
-.computer-toggle input{width:11px;height:11px;margin:0;flex:none}.computer-toggle svg{flex:none}
-.computer-perm-btn{display:inline-flex;align-items:center;gap:4px;font-size:10px;min-height:27px;padding:4px 7px;border:1px solid var(--line-light);border-radius:6px;color:var(--accent);background:color-mix(in srgb,var(--accent) 5%,var(--surface))}
+.computer-perm-btn{display:inline-flex;align-items:center;gap:4px;font-size:10px;min-height:27px;padding:4px 7px;border:1px solid var(--line-light);border-radius:6px;color:var(--accent);background:color-mix(in srgb,var(--accent) 5%,var(--surface));margin-bottom:8px}
 .computer-perm-btn:hover{background:color-mix(in srgb,var(--accent) 12%,var(--surface))}
+.computer-auto-btn{color:var(--ink-tertiary)!important}
+.computer-auto-btn.active{color:var(--accent)!important;background:color-mix(in srgb,var(--accent) 9%,transparent)!important}
+.computer-observe-time{display:block;font-size:9px;color:var(--ink-tertiary);text-align:right;padding:2px 0 6px;line-height:1.4}
+.computer-perms-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
 .computer-windows{margin-bottom:10px}.computer-windows header{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--ink-secondary);margin-bottom:6px}.computer-windows header time{margin-left:auto;font-size:9px}
 .computer-window-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:7px}
 .computer-window-tile{display:flex;flex-direction:column;gap:4px;padding:4px;border:1px solid var(--line-light);border-radius:9px;background:var(--surface);text-align:left;min-width:0;transition:border-color .15s,box-shadow .15s}
