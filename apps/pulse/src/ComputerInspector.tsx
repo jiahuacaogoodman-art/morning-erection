@@ -20,7 +20,6 @@ export default function ComputerInspector({data,target,jobs,refresh}:{data:Platf
   const screen=app.startsWith('screen:')?Number(app.slice(7)):null
   const permissions=inventory?.permissions
   const allowed=!!permissions&&(screen!==null?!!permissions.observe_all||permissions.screens.includes(screen):!permissions.exclude_apps?.includes(app)&&(!!permissions.observe_all||permissions.observe_apps.includes(app)))
-  const fullAccess=!!permissions?.observe_all&&!!permissions?.operate_all
   const load=async()=>{const version=++generation.current;setBusy('inventory');setError('');try{const result=await platformCommand<Inventory>('inventory',{device_id:device});if(version===generation.current)setInventory(result)}catch(e){if(version===generation.current)setError((e as Error).message)}finally{if(version===generation.current)setBusy('')}}
   useEffect(()=>{setDevice(target.device||'local');if(target.app)setApp(target.app);else if(target.display)setApp('screen:'+target.display)},[target.device,target.app,target.display])
   // Connect as soon as the pane opens: the overview is the default view, not a button press away.
@@ -58,15 +57,11 @@ export default function ComputerInspector({data,target,jobs,refresh}:{data:Platf
   return <div className="task-computer-pane">
     <div className="computer-target"><select aria-label="任务执行设备" value={device} onChange={event=>setDevice(event.target.value)}>{data.devices.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select><button type="button" className="icon-button" disabled={!!busy} aria-label="重新读取设备" title="重新读取设备" onClick={()=>void load()}><RefreshCw size={13}/></button><span className="target-status">{busy==='inventory'?'正在连接':inventory?'已连接':<button type="button" className="text-button" disabled={!!busy} onClick={()=>void load()}>连接设备</button>}</span></div>
     {!data.modules.computer?<div className="work-empty"><p>电脑能力已关闭。</p><a href="#settings/background">在设置中启用</a></div>:<>
-      {permissions&&<div className="computer-access" role="group" aria-label="电脑权限">
-        <label title="观察与操作全部应用和屏幕；钥匙串、密码管理器始终排除，含密码框的窗口不会截图也不会被操作"><input type="checkbox" checked={fullAccess} disabled={!!busy} onChange={e=>void savePermissions({...permissions,observe_all:e.target.checked,operate_all:e.target.checked})}/><ShieldCheck size={13}/><span><strong>完全访问</strong><small>全部应用 · 密码类除外</small></span></label>
-        <label title="Agent 的电脑操作直接执行，不再逐步弹出确认；随时可以「暂停并接管」"><input type="checkbox" checked={!!data.modules.computer_autonomy} disabled={!!busy} onChange={e=>void setAutonomy(e.target.checked)}/><Zap size={13}/><span><strong>自主执行</strong><small>{data.modules.computer_autonomy?'不再逐步确认':'每步需要确认'}</small></span></label>
-        {inventory&&(inventory.accessibility_permission===false||inventory.screen_recording_permission===false)&&
-          <div className="computer-sys-perms">
-            {inventory.accessibility_permission===false&&<button type="button" className="text-button" disabled={busy==='sysperm'} onClick={()=>void requestSysPerms('accessibility')}><ShieldCheck size={11}/>辅助功能权限</button>}
-            {inventory.screen_recording_permission===false&&<button type="button" className="text-button" disabled={busy==='sysperm'} onClick={()=>void requestSysPerms('screen_recording')}><Eye size={11}/>录屏权限</button>}
-          </div>}
-      </div>}
+      <div className="computer-toolbar">
+        {permissions&&<label className="computer-toggle" title="直接执行，不逐步确认"><input type="checkbox" checked={!!data.modules.computer_autonomy} disabled={!!busy} onChange={e=>void setAutonomy(e.target.checked)}/><Zap size={11}/><span>自主</span></label>}
+        {inventory&&inventory.accessibility_permission===false&&<button type="button" className="computer-perm-btn" disabled={busy==='sysperm'} onClick={()=>void requestSysPerms('accessibility')} title="打开系统设置 → 辅助功能"><ShieldCheck size={11}/>辅助功能</button>}
+        {inventory&&inventory.screen_recording_permission===false&&<button type="button" className="computer-perm-btn" disabled={busy==='sysperm'} onClick={()=>void requestSysPerms('screen_recording')} title="打开系统设置 → 录屏"><Eye size={11}/>录屏</button>}
+      </div>
       {error&&<p className="work-error" role="alert">{error}<button type="button" onClick={()=>void load()}>重试连接</button></p>}
       {!!tiles.length&&<section className="computer-windows" aria-label="主要窗口"><header><LayoutGrid size={12}/><span>主要窗口</span><time>{tilesAt?new Date(tilesAt*1000).toLocaleTimeString('zh-CN'):''}</time></header>
         <div className="computer-window-grid">{tiles.map(tile=><button type="button" key={tile.id} className={`computer-window-tile ${tile.id===app?'selected':''}`} aria-pressed={tile.id===app} title={tile.window||tile.name} onClick={()=>setApp(tile.id===app?'':tile.id)}>

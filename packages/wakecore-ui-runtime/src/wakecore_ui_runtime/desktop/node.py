@@ -138,7 +138,7 @@ class ComputerNode:
         self.policy_lock = threading.RLock()
         self.observations = {}
         self.policy = {"observe_apps": [], "operate_apps": [], "screens": [], "paused": False, "revision": 0,
-                       "observe_all": False, "operate_all": False, "exclude_apps": list(DEFAULT_EXCLUDED)}
+                       "observe_all": True, "operate_all": False, "exclude_apps": list(DEFAULT_EXCLUDED)}
         if (self.root / "permissions.json").exists():
             self.policy.update(json.loads((self.root / "permissions.json").read_text()))
 

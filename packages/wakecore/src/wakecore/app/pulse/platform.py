@@ -171,6 +171,11 @@ class Platform:
                 if result.get("protocol") != "morning.computer-node/1":
                     raise DeviceError("连接到了不兼容的设备服务。")
                 self.store.event("device.connected", device, {"bridge_ok": result.get("bridge", {}).get("ok", False)})
+            elif op == "inventory":
+                # Merge system permission state so the frontend has it on first load.
+                health = self.devices.call(device, "/health")
+                result["accessibility_permission"] = health.get("accessibility_permission")
+                result["screen_recording_permission"] = health.get("screen_recording_permission")
             return result
         if op in ("permissions", "takeover", "resume_computer"):
             value = body["permissions"] if op == "permissions" else {"paused": op == "takeover"}

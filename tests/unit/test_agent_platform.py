@@ -47,13 +47,11 @@ def action(node, key="one-action"):
 
 def test_computer_scopes_freshness_and_takeover(node):
     computer, bridge = node
-    with pytest.raises(ComputerError, match="授权"):
-        computer.observe({"app": APP})
-    computer.configure({"observe_apps": [APP]})
+    # observe_all defaults to True so observation works without explicit authorization
     body = action(computer)
     with pytest.raises(ComputerError):
         computer.act(body)
-    authorize(computer)
+    authorize(computer)  # also sets operate_apps
     with pytest.raises(ComputerError, match="过期"):
         computer.act(body)
     body = action(computer)
@@ -65,6 +63,10 @@ def test_computer_scopes_freshness_and_takeover(node):
     with pytest.raises(ComputerError, match="接管"):
         computer.act(body)
     assert not bridge.writes
+    # Excluded apps are always blocked regardless of observe_all
+    computer.configure({"paused": False})
+    with pytest.raises(ComputerError, match="排除"):
+        computer.observe({"app": "com.apple.keychainaccess"})
 
 
 def test_computer_send_once_survives_crash_and_conflicting_key(node, tmp_path):
@@ -296,8 +298,11 @@ class ListingBridge(Bridge):
 def test_full_access_covers_all_apps_but_keeps_exclusions_and_pause(tmp_path):
     bridge = ListingBridge()
     computer = ComputerNode(tmp_path / "node", bridge)
+    # Default: observe_all=True, operate_all=False.
+    # operate_all without observe_all errors even when observe_all is already the default —
+    # the configure call must see both in the same patch if it's being set explicitly.
     with pytest.raises(ComputerError, match="观察"):
-        computer.configure({"operate_all": True})
+        computer.configure({"observe_all": False, "operate_all": True})
     computer.configure({"observe_all": True, "operate_all": True})
     computer.act(action(computer, "full-access-1"))
     assert bridge.writes
@@ -310,13 +315,17 @@ def test_full_access_covers_all_apps_but_keeps_exclusions_and_pause(tmp_path):
 
 def test_overview_lists_running_windows_frontmost_first_without_excluded_content(tmp_path):
     computer = ComputerNode(tmp_path / "node", ListingBridge())
+    # Default: observe_all=True, so observable apps show content; excluded ones never do.
+    overview = computer.overview({})
+    assert [w["id"] for w in overview["windows"]] == [APP, "com.apple.keychainaccess"]
+    calc = next(w for w in overview["windows"] if w["id"] == APP)
+    keychain = next(w for w in overview["windows"] if w["id"] == "com.apple.keychainaccess")
+    assert calc["observable"] and "window" in calc
+    assert not keychain["observable"] and "window" not in keychain
+    # Turning observe_all off hides non-listed apps
+    computer.configure({"observe_all": False})
     hidden = computer.overview({})
-    assert [w["id"] for w in hidden["windows"]] == [APP, "com.apple.keychainaccess"]
-    assert not any(w["observable"] or "window" in w for w in hidden["windows"])
-    computer.configure({"observe_all": True})
-    shown = {w["id"]: w for w in computer.overview({"limit": 4})["windows"]}
-    assert shown[APP]["observable"] and shown[APP]["window"]
-    assert not shown["com.apple.keychainaccess"]["observable"] and "window" not in shown["com.apple.keychainaccess"]
+    assert not any(w["observable"] for w in hidden["windows"])
     with pytest.raises(ComputerError):
         computer.overview({"limit": 99})
 
