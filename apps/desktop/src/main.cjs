@@ -47,7 +47,30 @@ function waitForBackend(port, maxMs = 30000) {
   })
 }
 
+// Check if a LaunchAgent instance of the backend is already running on the
+// well-known port. If so, reuse it instead of starting a second process.
+// This is important for Accessibility permissions: the LaunchAgent's Python
+// executable is the one macOS has granted permissions to; a freshly-spawned
+// bundle process runs as a different binary and gets "no-permissions".
+const LAUNCHAGENT_PORT = 8788
+
+function probePort(port) {
+  return new Promise((resolve) => {
+    http.get(`http://127.0.0.1:${port}/pulse/pi`, (res) => {
+      res.resume()
+      resolve(true)
+    }).on('error', () => resolve(false))
+  })
+}
+
 async function startBackend() {
+  // Prefer the already-running LaunchAgent so we inherit its permissions.
+  if (await probePort(LAUNCHAGENT_PORT)) {
+    console.log(`Reusing LaunchAgent backend on port ${LAUNCHAGENT_PORT}`)
+    backendPort = LAUNCHAGENT_PORT
+    return LAUNCHAGENT_PORT
+  }
+
   const port = await getFreePort()
   backendPort = port
 
