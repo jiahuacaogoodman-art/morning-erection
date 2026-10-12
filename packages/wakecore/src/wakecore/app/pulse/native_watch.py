@@ -46,7 +46,7 @@ class NativeWatchTools:
                 return {"devices": platform.devices.public(), "enabled": bool(platform.modules.get("computer"))}
             if operation == "status":
                 return {"actions": platform.store.list("computer", limit=20)}
-            if operation not in ("inventory", "observe", "screen", "propose_action"):
+            if operation not in ("inventory", "overview", "observe", "screen", "propose_action"):
                 raise SchemaMismatch("Pi 不能修改设备权限或代替用户审批。")
             return platform.command(params)
         if platform and name == 'morning_terminal':

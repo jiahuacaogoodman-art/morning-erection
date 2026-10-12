@@ -40,6 +40,21 @@ ACTION_FIELDS = {
 }
 
 
+# Full access still leaves credential managers out unless the person names them explicitly.
+DEFAULT_EXCLUDED = ["com.apple.keychainaccess", "com.1password.1password", "com.agilebits.onepassword7", "com.bitwarden.desktop", "com.apple.Passwords"]
+APP_LINE = re.compile(r"^(.*?) — .*? — ([\w.-]+)(?: \[(.*)\])?$")
+
+
+def parse_apps(text):
+    apps = {}
+    for line in text.splitlines():
+        match = APP_LINE.match(line.strip())
+        if match and match[2] not in apps:
+            flags = (match[3] or "").split(", ")
+            apps[match[2]] = {"id": match[2], "name": match[1], "frontmost": "frontmost" in flags, "running": "running" in flags}
+    return list(apps.values())
+
+
 class ComputerError(ValueError):
     def __init__(self, code, message, status=422):
         super().__init__(message)
@@ -94,16 +109,17 @@ class ComputerNode:
         self.lock = threading.RLock()
         self.policy_lock = threading.RLock()
         self.observations = {}
-        self.policy = {"observe_apps": [], "operate_apps": [], "screens": [], "paused": False, "revision": 0}
+        self.policy = {"observe_apps": [], "operate_apps": [], "screens": [], "paused": False, "revision": 0,
+                       "observe_all": False, "operate_all": False, "exclude_apps": list(DEFAULT_EXCLUDED)}
         if (self.root / "permissions.json").exists():
             self.policy.update(json.loads((self.root / "permissions.json").read_text()))
 
     def configure(self, body):
         with self.policy_lock:
-            if set(body) - {"observe_apps", "operate_apps", "screens", "paused"}:
+            if set(body) - {"observe_apps", "operate_apps", "screens", "paused", "observe_all", "operate_all", "exclude_apps"}:
                 raise ComputerError("invalid_permissions", "设备权限包含未知字段。")
             value = {**self.policy, **body}
-            for key in ("observe_apps", "operate_apps"):
+            for key in ("observe_apps", "operate_apps", "exclude_apps"):
                 if not isinstance(value[key], list) or len(value[key]) > 100 or any(not isinstance(a, str) or not BUNDLE_ID.fullmatch(a) for a in value[key]):
                     raise ComputerError("invalid_apps", "请使用应用的 bundle ID 设置权限。")
             if not set(value["operate_apps"]) <= set(value["observe_apps"]):
@@ -112,6 +128,10 @@ class ComputerNode:
                 raise ComputerError("invalid_screens", "请指定有效的显示器编号。")
             if type(value["paused"]) is not bool:
                 raise ComputerError("invalid_pause", "暂停状态需要是开关。")
+            if type(value["observe_all"]) is not bool or type(value["operate_all"]) is not bool:
+                raise ComputerError("invalid_permissions", "完全访问需要是开关。")
+            if value["operate_all"] and not value["observe_all"]:
+                raise ComputerError("observation_required", "操作全部应用前需要允许观察全部应用。")
             value["revision"] += 1
             write_private(self.root / "permissions.json", value)
             self.policy = value
@@ -135,18 +155,58 @@ class ComputerNode:
             display_error = "屏幕捕获尚未可用；请检查录屏权限和 mss 依赖。"
         if screen_permission() is False:
             display_error = "Computer 节点尚未获得 macOS 录屏权限；应用窗口观察由已授权的桌面桥接提供。"
-        apps = {}
-        for line in result["text"].splitlines():
-            match = re.match(r"^(.*?) — .*? — ([\w.-]+)(?: \[|$)", line)
-            if match:
-                apps.setdefault(match[2], {"id": match[2], "name": match[1]})
-        return {"applications": result["text"], "apps": list(apps.values()), "displays": displays, "display_error": display_error,
+        return {"applications": result["text"], "apps": parse_apps(result["text"]), "displays": displays, "display_error": display_error,
                 "permissions": dict(self.policy)}
+
+    def observable(self, app):
+        policy = self.policy
+        return app not in policy["exclude_apps"] and (policy["observe_all"] or app in policy["observe_apps"])
+
+    def overview(self, body):
+        """Running apps at a glance. Uses the accessibility tree only — no screenshot, no screen
+        recording permission required. Observable apps get their window title and a shallow
+        summary of top-level elements; non-observable apps are listed by name only so the grid
+        stays honest without silently omitting anything."""
+        limit = body.get("limit", 6)
+        if type(limit) is not int or not 1 <= limit <= 12:
+            raise ComputerError("invalid_limit", "窗口数量需要在 1 到 12 之间。")
+        result = self.bridge.call("list_apps", {})
+        if result["is_error"]:
+            raise ComputerError("inventory_unavailable", "无法读取应用列表，请检查桌面桥接与系统权限。")
+        running = [app for app in parse_apps(result["text"]) if app["running"]]
+        running.sort(key=lambda app: not app["frontmost"])
+        windows = []
+        for app in running[:limit]:
+            item = {**app, "observable": self.observable(app["id"]), "at": time.time()}
+            if item["observable"]:
+                try:
+                    with self.lock:
+                        tree, _image = self._read(app["id"])
+                    item["window"] = tree.window
+                    item["sensitive"] = tree.has_sensitive()
+                    # Shallow element summary — enough to make the card meaningful without
+                    # sending the whole tree. Top-level nodes only (depth == 1 after the root).
+                    summary = []
+                    for node in tree.nodes:
+                        if node.depth > 2:
+                            break
+                        label = node.description or node.head
+                        if label:
+                            summary.append(label[:60])
+                        if len(summary) >= 6:
+                            break
+                    item["summary"] = summary
+                except ComputerError as exc:
+                    item["error"] = str(exc)
+            windows.append(item)
+        return {"windows": windows, "at": time.time(), "permissions": dict(self.policy)}
 
     def _allowed(self, app, operation=False):
         if operation and self.policy["paused"]:
             raise ComputerError("taken_over", "电脑已暂停，由你接管。", 409)
-        if app not in self.policy["operate_apps" if operation else "observe_apps"]:
+        if app in self.policy["exclude_apps"]:
+            raise ComputerError("permission_required", "这个应用被排除在电脑权限之外。", 403)
+        if not self.policy["operate_all" if operation else "observe_all"] and app not in self.policy["operate_apps" if operation else "observe_apps"]:
             raise ComputerError("permission_required", "请先在 Devices 中授权这个应用。", 403)
 
     def _read(self, app):
@@ -184,7 +244,7 @@ class ComputerNode:
     def screen(self, body):
         display = body.get("display")
         with self.policy_lock:
-            if display not in self.policy["screens"]:
+            if not self.policy["observe_all"] and display not in self.policy["screens"]:
                 raise ComputerError("screen_permission_required", "请先授权这个显示器的观察权限。", 403)
         if screen_permission() is False:
             raise ComputerError("system_screen_permission_required", "请在 macOS 隐私设置中为运行 Computer 节点的程序授予录屏权限。", 403)
@@ -311,7 +371,7 @@ def make_node_handler(node, token):
                     body = json.loads(self.rfile.read(size))
                     if not isinstance(body, dict):
                         raise ComputerError("invalid_body", "请求需要是对象。")
-                route = {("GET", "/health"): node.health, ("GET", "/inventory"): node.inventory,
+                route = {("GET", "/health"): node.health, ("GET", "/inventory"): node.inventory, ("POST", "/overview"): lambda: node.overview(body),
                          ("POST", "/observe"): lambda: node.observe(body), ("POST", "/screen"): lambda: node.screen(body),
                          ("POST", "/act"): lambda: node.act(body), ("POST", "/permissions"): lambda: node.configure(body)}.get((self.command, self.path))
                 if route is None:

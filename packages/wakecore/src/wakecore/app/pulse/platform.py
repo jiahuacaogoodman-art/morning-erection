@@ -118,7 +118,8 @@ class Platform:
     def snapshot(self):
         items = [self.api.service.pulse(self.principal, t["task_id"]) for t in self.api.service.list_tasks(self.principal)]
         hidden = {r["id"] for r in self.store.list("archived")}
-        return {"modules": {"watch": bool(self.modules.get("watch")), "computer": bool(self.modules.get("computer")), "desktop_notifications": bool(self.modules.get("desktop_notifications"))},
+        return {"modules": {"watch": bool(self.modules.get("watch")), "computer": bool(self.modules.get("computer")), "desktop_notifications": bool(self.modules.get("desktop_notifications")),
+                            "computer_autonomy": bool(self.modules.get("computer_autonomy"))},
                 "desktop_notifications_available": notifications.available(),
                 "watch_service": {"running": bool(self.worker and self.worker.is_alive() and not self.worker_stop.is_set()), "independent_of_page": True,
                                   "file_events": self.file_events.error or "系统事件与定时观察", "error": self.background_error},
@@ -157,7 +158,7 @@ class Platform:
     def command(self, body):
         op = body.get("operation")
         device = body.get("device_id", "local")
-        if op in ("observe", "screen", "propose_action", "approve_action"):
+        if op in ("observe", "screen", "overview", "propose_action", "approve_action"):
             self.assert_enabled("computer")
         if op == "device_save":
             return self.devices.save(body["device"])
@@ -180,6 +181,14 @@ class Platform:
                     if job["device_id"] == device:
                         self.store.save("computer", job["id"], {**job, "state": "cancelled"})
             return result
+        if op == "overview":
+            return self.devices.call(device, "/overview", {"limit": body.get("limit", 6)})
+        if op == "computer_autonomy":
+            if type(body.get("enabled")) is not bool:
+                raise ValueError("自主执行需要是开关。")
+            self.modules = self.store.save("configuration", "modules", {**self.modules, "computer_autonomy": body["enabled"]})
+            self.store.event("module.changed", "computer_autonomy", {"enabled": body["enabled"]})
+            return {"computer_autonomy": body["enabled"]}
         if op in ("observe", "screen"):
             result = self.devices.call(device, "/" + op, {k: body[k] for k in ("app", "display", "region") if k in body})
             self.remember_frame(device, result)
@@ -215,9 +224,20 @@ class Platform:
                 if len(self.previews) > 60:
                     self.previews.pop(next(iter(self.previews)))
             target = next((element["label"] for element in fresh.get("elements", []) if element["index"] == str(body["arguments"].get("element_index"))), None)
-            job = self.store.save("computer", key, {**payload, "goal": body["goal"][:500], "state": "approval", "created": time.time(),
+            # Opt-in, user-only switch (Pi cannot change it). The node still enforces app
+            # scope, exclusions, credential windows, system shortcuts and fresh observations.
+            auto = bool(self.modules.get("computer_autonomy"))
+            job = self.store.save("computer", key, {**payload, "goal": body["goal"][:500], "state": "queued" if auto else "approval", "auto": auto, "created": time.time(),
                 "expires": fresh["at"] + 120, "digest": digest(payload), "session_path": self.session_path(), "target": target, "has_preview": bool(fresh.get("image")), "model_binding": self.model_binding() if self.api.native else None,
                 "tool_call_id": body.get('_tool_call_id'), "run_id": self.native_run})
+            if auto:
+                self.execute(job)
+                done = self.store.get("computer", key)
+                observed = done["state"] == "observed"
+                after = self.frames.get(device) if observed else {}
+                return {"computer_action": done, "image": after.get("image"),
+                        "observation": {k: v for k, v in after.items() if k not in ("image", "actions")} or None,
+                        "message": "已执行并重新观察；请根据新观察核验目标。" if observed else "操作没有完成：" + str(done.get("error") or "结果未知，请重新观察。")}
             self.store.event("computer.approval_requested", key, {"goal": job["goal"], "device_id": device})
             return {"computer_action": job, "message": "操作已准备好，等待你在界面批准。"}
         if op in ("approve_action", "reject_action"):
@@ -337,7 +357,7 @@ class Platform:
             state = "observed" if result.get("status") == "observed" else "unknown"
             job = self.store.save("computer", job["id"], {**job, "state": state, "result": {k: v for k, v in result.items() if k != "after"}})
             self.store.event("computer." + state, job["id"], {"device_id": job["device_id"]})
-            if state == "observed" and job.get("session_path"):
+            if state == "observed" and job.get("session_path") and not job.get("auto"):
                 self.enqueue_wakeup("computer:" + job["id"], job["session_path"], "已批准的电脑动作已执行，请使用 morning_computer 重新观察并核验目标，不能仅凭发送成功宣称完成。", job["goal"], {"computer": {"device_id": job["device_id"], "app": job["app"]}, "wake_model_binding": job.get("model_binding")})
         except Exception as exc:
             # A lost HTTP response can still mean the action reached the node.

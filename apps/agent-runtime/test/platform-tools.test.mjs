@@ -22,3 +22,15 @@ test('computer parameters survive strict Gateway filling without unrelated actio
   assert.ok(!result.content[0].text.includes('image-data'))
   assert.equal(result.details.image,undefined)
 })
+
+test('window overview uses accessibility tree labels, not images', async()=>{
+  const tools=new Map()
+  createMorningExtension({request:async()=>({windows:[{id:'com.apple.calculator',name:'计算器',observable:true,summary:['等于','3','7']},{id:'com.example.hidden',name:'Hidden',observable:false}]})}, null, true)({registerTool:tool=>tools.set(tool.name,tool)})
+  const result=await tools.get('morning_computer').execute('t',{operation:'overview'})
+  // No image content — accessibility tree only
+  assert.equal(result.content.filter(part=>part.type==='image').length,0)
+  assert.ok(!result.content[0].text.includes('image'))
+  // Summary labels are present in the serialised metadata
+  assert.ok(result.content[0].text.includes('等于'))
+  assert.equal(result.details.windows.length,2)
+})

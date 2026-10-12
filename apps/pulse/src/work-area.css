@@ -25,3 +25,35 @@
 .field-help-content{position:absolute;z-index:20;left:0;top:27px;width:260px;max-width:65vw;padding:12px 14px;line-height:1.7;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 30px #00000014}
 .preference-title-row>.field-help{margin-left:4px}
 @media(max-width:640px){.field-help-content{left:auto;right:0}}
+
+/* Drag-to-resize strip between chat column and docked work area. */
+.work-area-resizer{position:absolute;left:-4px;top:0;bottom:0;width:8px;cursor:col-resize;z-index:10;touch-action:none}
+.work-area-resizer::after{content:'';position:absolute;left:3px;top:0;bottom:0;width:2px;background:transparent;transition:background .15s}
+.work-area-resizer:hover::after,.work-area-resizer.dragging::after{background:var(--accent)}
+.work-area-resizer.dragging{cursor:col-resize}
+@media(max-width:1024px){.work-area-resizer{display:none}}
+.task-work-area.floating{position:fixed;z-index:40;border:1px solid var(--line);border-radius:14px;resize:both;overflow:hidden;min-width:320px;min-height:260px;box-shadow:0 18px 50px #2a1a0a24,0 2px 8px #2a1a0a14;contain:none}
+.task-work-area.floating .task-work-area-body{height:100%}
+.task-work-area.floating .task-work-area-header{cursor:grab;user-select:none;touch-action:none}
+.task-work-area.floating.dragging{opacity:.94}.task-work-area.floating.dragging .task-work-area-header{cursor:grabbing}
+.task-work-area-tools{display:flex;gap:2px;flex:none}.task-work-area-tools .icon-button{min-width:27px;width:27px;min-height:27px;height:27px;color:var(--ink-secondary)}
+@media(max-width:1024px){.task-work-area.floating .task-work-area-header .task-work-area-tools>.icon-button:last-child{transform:none}}
+
+/* Computer: access switches and the main-window grid. */
+.computer-access{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.computer-access label{display:flex;align-items:center;gap:6px;padding:7px 8px;border:1px solid var(--line-light);border-radius:8px;background:var(--surface);cursor:pointer;min-width:0}
+.computer-access label:has(input:checked){border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:color-mix(in srgb,var(--accent) 6%,var(--surface))}
+.computer-access input{width:12px;height:12px;margin:0;flex:none}.computer-access svg{color:var(--accent);flex:none}
+.computer-access span{display:flex;flex-direction:column;min-width:0}.computer-access strong{font-size:11px;font-weight:550;line-height:1.4}.computer-access small{font-size:9px;line-height:1.4;color:var(--ink-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.computer-windows{margin-bottom:10px}.computer-windows header{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--ink-secondary);margin-bottom:6px}.computer-windows header time{margin-left:auto;font-size:9px}
+.computer-window-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:7px}
+.computer-window-tile{display:flex;flex-direction:column;gap:4px;padding:4px;border:1px solid var(--line-light);border-radius:9px;background:var(--surface);text-align:left;min-width:0;transition:border-color .15s,box-shadow .15s}
+.computer-window-tile:hover{border-color:var(--line)}.computer-window-tile.selected{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 16%,transparent)}
+.computer-window-thumb{display:grid;place-items:center;aspect-ratio:16/10;border-radius:6px;overflow:hidden;background:var(--surface-under);font-size:9px;color:var(--ink-tertiary)}
+.computer-window-label{padding:6px 8px;text-align:center;font-size:9px;color:var(--ink-tertiary);line-height:1.5}
+.computer-window-tree{display:flex;flex-direction:column;gap:2px;padding:6px 7px;width:100%;overflow:hidden}
+.computer-window-tree span{font-size:8.5px;line-height:1.45;color:var(--ink-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:1px 3px;border-radius:3px;background:color-mix(in srgb,var(--accent) 5%,transparent)}
+.computer-window-tree span:first-child{color:var(--ink);font-weight:500;background:color-mix(in srgb,var(--accent) 9%,transparent)}
+.computer-window-name{display:flex;align-items:center;gap:5px;font-size:10px;line-height:1.4;padding:0 2px 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.computer-window-name i{width:5px;height:5px;border-radius:50%;background:var(--success);flex:none}
+@media(prefers-reduced-motion:reduce){.computer-window-tile{transition:none}}

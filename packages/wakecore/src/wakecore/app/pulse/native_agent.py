@@ -12,7 +12,7 @@ from wakecore.adapters.agent_runtime.native import NativePiError
 def tool_label(name, args=None):
     args = args if isinstance(args, dict) else {}
     if name == "morning_computer":
-        return {"observe": "观察应用", "screen": "观察屏幕", "inventory": "读取应用清单", "devices": "查看设备",
+        return {"observe": "观察应用", "screen": "观察屏幕", "inventory": "读取应用清单", "overview": "浏览主要窗口", "devices": "查看设备",
                 "propose_action": "准备操作确认", "status": "读取操作记录"}.get((args or {}).get("operation"), "电脑工具")
     if name == 'morning_terminal':
         return {'start': '启动任务终端', 'read': '读取终端输出', 'input': '输入终端', 'stop': '停止终端', 'list': '查看任务终端'}.get(args.get('operation'), '任务终端')

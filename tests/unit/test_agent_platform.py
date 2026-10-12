@@ -282,3 +282,55 @@ def test_partial_bridge_observation_cannot_authorize_or_execute(node, summary):
         computer.act(body)
     assert caught.value.code == 'observation_incomplete'
     assert not bridge.writes
+
+
+class ListingBridge(Bridge):
+    def call(self, method, args, **kwargs):
+        if method == "list_apps":
+            return {"text": f"Calculator — /Calculator.app/ — {APP} [frontmost, running, uses=3]\n"
+                            "Keychain — /Keychain.app/ — com.apple.keychainaccess [running]\n"
+                            "Old — /Old.app — com.example.old [last-used=2026-10-01]", "images": [], "is_error": False}
+        return super().call(method, args, **kwargs)
+
+
+def test_full_access_covers_all_apps_but_keeps_exclusions_and_pause(tmp_path):
+    bridge = ListingBridge()
+    computer = ComputerNode(tmp_path / "node", bridge)
+    with pytest.raises(ComputerError, match="观察"):
+        computer.configure({"operate_all": True})
+    computer.configure({"observe_all": True, "operate_all": True})
+    computer.act(action(computer, "full-access-1"))
+    assert bridge.writes
+    with pytest.raises(ComputerError, match="排除"):
+        computer.observe({"app": "com.apple.keychainaccess"})
+    computer.configure({"paused": True})
+    with pytest.raises(ComputerError, match="接管"):
+        computer.act(action(computer, "full-access-2"))
+
+
+def test_overview_lists_running_windows_frontmost_first_without_excluded_content(tmp_path):
+    computer = ComputerNode(tmp_path / "node", ListingBridge())
+    hidden = computer.overview({})
+    assert [w["id"] for w in hidden["windows"]] == [APP, "com.apple.keychainaccess"]
+    assert not any(w["observable"] or "window" in w for w in hidden["windows"])
+    computer.configure({"observe_all": True})
+    shown = {w["id"]: w for w in computer.overview({"limit": 4})["windows"]}
+    assert shown[APP]["observable"] and shown[APP]["window"]
+    assert not shown["com.apple.keychainaccess"]["observable"] and "window" not in shown["com.apple.keychainaccess"]
+    with pytest.raises(ComputerError):
+        computer.overview({"limit": 99})
+
+
+def test_pi_cannot_switch_computer_autonomy(tmp_path):
+    from wakecore.app.pulse.native_watch import NativeWatchTools
+    kernel = build(db_url=f"sqlite:///{tmp_path}/kernel.db", with_model=False)
+    app = LocalPulseApp(kernel, state_dir=tmp_path, platform_enabled=True)
+    try:
+        with pytest.raises(Exception, match="不能"):
+            NativeWatchTools(app.api, app.principal)("morning_computer", {"operation": "computer_autonomy", "enabled": True})
+        assert not app.platform.snapshot()["modules"]["computer_autonomy"]
+        app.platform.command({"operation": "computer_autonomy", "enabled": True})
+        assert app.platform.snapshot()["modules"]["computer_autonomy"]
+    finally:
+        app.platform.close()
+        kernel.ctx.store.close()
