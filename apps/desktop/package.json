@@ -1,0 +1,47 @@
+{
+  "name": "morning-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/main.cjs",
+  "scripts": {
+    "dev": "electron .",
+    "build": "electron-builder --mac",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "electron-squirrel-startup": "^1.0.1"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "art.goodman.morning",
+    "productName": "Morning",
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon.icns",
+      "entitlements": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.plist",
+      "hardenedRuntime": false
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "entitlements.mac.plist"
+    ],
+    "extraResources": [
+      {
+        "from": "../../",
+        "to": "app",
+        "filter": [
+          "scripts/pulse.py",
+          "packages/**/*",
+          ".venv/**/*",
+          "apps/pulse/dist/**/*",
+          "apps/agent-runtime/**/*"
+        ]
+      }
+    ]
+  }
+}
