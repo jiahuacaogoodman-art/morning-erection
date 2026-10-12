@@ -1,4 +1,5 @@
 import {lazy,Suspense,useEffect,useRef,useState} from 'react'
+import type React from 'react'
 import {Globe,Monitor,TerminalSquare,X,ChevronUp,PictureInPicture2,PanelRight} from 'lucide-react'
 import {gsap,useGSAP,useReducedMotion} from './Motion'
 import {workspaceCommand,type PreviewRecord,type WorkspaceState,type WorkTab,type WorkTarget} from './task-workspace'
@@ -12,39 +13,55 @@ const PreviewPane=lazy(()=>import('./PreviewPane'))
 type Place={x:number;y:number;w:number;h:number}
 const clampPlace=(p:Place):Place=>{const w=Math.min(Math.max(p.w,320),innerWidth-16),h=Math.min(Math.max(p.h,260),innerHeight-16);return {w,h,x:Math.min(Math.max(p.x,8),innerWidth-w-8),y:Math.min(Math.max(p.y,8),innerHeight-h-8)}}
 const savedPlace=():Place=>{try{const v=JSON.parse(localStorage.getItem('pulse:work-place')||'');if(typeof v?.x==='number')return clampPlace(v)}catch{/* first use */}return clampPlace({w:520,h:Math.min(620,innerHeight-120),x:innerWidth-548,y:72})}
-
 const MIN_W=280, MAX_W_FRAC=0.65
-const savedW=():number=>{const v=localStorage.getItem('pulse:work-width');return v?Math.max(MIN_W,Number(v)):420}
 
-export function useWorkAreaResizer(floating:boolean,open:boolean){
-  const [width,setWidth]=useState(savedW)
-  const onResize=(event:React.PointerEvent<HTMLDivElement>)=>{
-    if(floating||!open||event.button!==0)return
-    event.preventDefault()
-    const handle=event.currentTarget
-    handle.setPointerCapture(event.pointerId)
-    handle.classList.add('dragging')
-    const startX=event.clientX,startW=width
-    const move=(e:PointerEvent)=>{const next=Math.min(Math.max(startW-(e.clientX-startX),MIN_W),innerWidth*MAX_W_FRAC);setWidth(next)}
-    const up=()=>{handle.classList.remove('dragging');handle.removeEventListener('pointermove',move);const final=Math.min(Math.max(startW-(event.clientX-startX),MIN_W),innerWidth*MAX_W_FRAC);localStorage.setItem('pulse:work-width',String(Math.round(final)));setWidth(Math.round(final))}
-    handle.addEventListener('pointermove',move);handle.addEventListener('pointerup',up,{once:true});handle.addEventListener('pointercancel',up,{once:true})
+/* WorkAreaResizer lives OUTSIDE the aside element in the chat-workspace flex row.
+   It writes style.width directly on the asideRef — no React state, no GSAP interference. */
+export function WorkAreaResizer({asideRef,floating,open}:{asideRef:React.RefObject<HTMLElement|null>;floating:boolean;open:boolean}){
+  if(floating||!open)return null
+  const onDown=(ev:React.PointerEvent<HTMLDivElement>)=>{
+    const aside=asideRef.current
+    if(ev.button!==0||!aside)return
+    ev.preventDefault()
+    const el=ev.currentTarget
+    el.setPointerCapture(ev.pointerId)
+    document.body.style.setProperty('cursor','col-resize','important')
+    document.body.style.userSelect='none'
+    const startX=ev.clientX,startW=aside.offsetWidth
+    const move=(e:PointerEvent)=>{
+      const next=Math.min(Math.max(startW-(e.clientX-startX),MIN_W),innerWidth*MAX_W_FRAC)
+      aside.style.width=next+'px'
+      aside.style.flexBasis=next+'px'
+    }
+    const up=()=>{
+      document.body.style.removeProperty('cursor')
+      document.body.style.userSelect=''
+      el.removeEventListener('pointermove',move)
+      localStorage.setItem('pulse:work-width',String(Math.round(aside.offsetWidth)))
+    }
+    el.addEventListener('pointermove',move)
+    el.addEventListener('pointerup',up,{once:true})
+    el.addEventListener('pointercancel',up,{once:true})
   }
-  return {width,onResize}
+  return <div className="work-area-resizer" aria-hidden="true" onPointerDown={onDown}/>
 }
 
-export function WorkArea({target,onTarget,platform,jobs,data,error,refresh,refreshPlatform}:{target:WorkTarget|null;onTarget:(target:WorkTarget|null)=>void;platform:PlatformState;jobs:ComputerJob[];data:WorkspaceState|null;error:string;refresh:()=>void;refreshPlatform:()=>void}){
+export function WorkArea({target,onTarget,platform,jobs,data,error,refresh,refreshPlatform,asideRef}:{target:WorkTarget|null;onTarget:(target:WorkTarget|null)=>void;platform:PlatformState;jobs:ComputerJob[];data:WorkspaceState|null;error:string;refresh:()=>void;refreshPlatform:()=>void;asideRef?:React.RefObject<HTMLElement|null>}){
   const [shown,setShown]=useState(!!target),[vertical,setVertical]=useState(()=>matchMedia('(max-width:1024px)').matches)
   const [narrow,setNarrow]=useState(()=>matchMedia('(max-width:720px)').matches)
   const [floatPref,setFloatPref]=useState(()=>localStorage.getItem('pulse:work-floating')==='1'),[place,setPlace]=useState(savedPlace)
-  const {width:dockedW,onResize}=useWorkAreaResizer(floatPref||narrow,!!target)
   const floating=floatPref&&!narrow
-  const previous=useRef<WorkTarget>({kind:'computer'}),root=useRef<HTMLElement>(null),body=useRef<HTMLDivElement>(null),motion=useRef<ReturnType<typeof gsap.timeline>|null>(null)
+  // Use the externally-supplied ref so App can position WorkAreaResizer alongside the aside.
+  const internalRef=useRef<HTMLElement>(null)
+  const root=(asideRef||internalRef) as React.RefObject<HTMLElement>
+  const body=useRef<HTMLDivElement>(null),motion=useRef<ReturnType<typeof gsap.timeline>|null>(null)
+  const previous=useRef<WorkTarget>({kind:'computer'})
   if(target)previous.current=target
   const active=target||previous.current,open=!!target,reduced=useReducedMotion()
+  const savedDockedW=():number=>{const v=localStorage.getItem('pulse:work-width');return v?Math.max(MIN_W,Number(v)):420}
   useEffect(()=>{if(target)setShown(true)},[target])
   useEffect(()=>{const media=matchMedia('(max-width:1024px)'),small=matchMedia('(max-width:720px)');const update=()=>{setVertical(media.matches);setNarrow(small.matches)};media.addEventListener('change',update);small.addEventListener('change',update);return()=>{media.removeEventListener('change',update);small.removeEventListener('change',update)}},[])
   useEffect(()=>{localStorage.setItem('pulse:work-floating',floatPref?'1':'0');if(floatPref&&!localStorage.getItem('pulse:work-place'))setPlace(savedPlace())},[floatPref])
-  // The corner grip resizes natively (CSS resize); remember whatever size the person leaves it at.
   useEffect(()=>{
     if(!floating||!root.current)return
     let timer:ReturnType<typeof setTimeout>
@@ -71,7 +88,7 @@ export function WorkArea({target,onTarget,platform,jobs,data,error,refresh,refre
       return
     }
     gsap.set(root.current,{scale:1})
-    const size=vertical?Math.min(340,innerHeight*.43):dockedW
+    const size=vertical?Math.min(340,innerHeight*.43):savedDockedW()
     gsap.set(root.current,vertical?{width:'100%'}:{height:'100%'})
     gsap.set(body.current,vertical?{width:'100%',height:size}:{width:size,height:'100%'})
     motion.current=gsap.timeline().to(root.current,{[vertical?'height':'width']:open?size:0,opacity:open?1:0,duration:reduced?0:open?.38:.34,ease:open?'power3.out':'power4.inOut',onComplete:()=>{if(!open)setShown(false)}},0).to(body.current,{[vertical?'y':'x']:open?0:20,opacity:open?1:0,duration:reduced?0:.24,overwrite:true},open&&!reduced?.06:0)
@@ -81,7 +98,6 @@ export function WorkArea({target,onTarget,platform,jobs,data,error,refresh,refre
   if(!shown&&!target)return null
   const tabs:{id:WorkTab;name:string;Icon:typeof Monitor}[]=[{id:'computer',name:'电脑',Icon:Monitor},{id:'terminal',name:'终端',Icon:TerminalSquare},{id:'preview',name:'网页',Icon:Globe}]
   return <aside ref={root} className={`task-work-area ${floating?'floating':''}`} aria-label="任务工作区" inert={!open} style={floating?{left:place.x,top:place.y,width:place.w,height:place.h}:{[vertical?'height':'width']:0}}>
-    {!floating&&!vertical&&open&&<div className="work-area-resizer" aria-hidden="true" onPointerDown={onResize} title="拖动调整宽度"/>}
     <div ref={body} className="task-work-area-body"><header className="task-work-area-header" onPointerDown={drag} onDoubleClick={e=>{if(!narrow&&!(e.target as HTMLElement).closest('button'))setFloatPref(v=>!v)}} title={narrow?undefined:floating?'拖动移动 · 双击停靠':'双击浮动'}><div role="tablist" aria-label="任务工作区内容">{tabs.map(({id,name,Icon})=><button type="button" role="tab" key={id} aria-selected={active.kind===id} onClick={()=>{setActionError('');onTarget({kind:id})}}><Icon size={14}/><span>{name}</span>{id==='terminal'&&!!data?.terminals.filter(item=>item.state==='running').length&&<small>{data.terminals.filter(item=>item.state==='running').length}</small>}</button>)}</div><div className="task-work-area-tools">{!narrow&&<button type="button" className="icon-button" aria-label={floating?'停靠到右侧':'浮动窗口'} title={floating?'停靠到右侧':'浮动，可拖动和调整大小'} onClick={()=>setFloatPref(v=>!v)}>{floating?<PanelRight size={14}/>:<PictureInPicture2 size={14}/>}</button>}<button type="button" className="icon-button" aria-label="收起任务工作区" title="收起 · 进程继续运行" onClick={()=>onTarget(null)}>{vertical&&!floating?<ChevronUp size={15}/>:<X size={15}/>}</button></div></header>
     {(error||actionError)&&<div className="work-error" role="alert">{error||actionError}<button type="button" onClick={refresh}>重新读取</button></div>}
     <section className="task-work-area-content" aria-label={`${tabs.find(item=>item.id===active.kind)?.name}工作区`}><Suspense fallback={<div className="work-empty">正在打开…</div>}>
