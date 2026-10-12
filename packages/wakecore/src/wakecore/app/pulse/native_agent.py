@@ -19,7 +19,18 @@ def tool_label(name, args=None):
     if name == 'morning_preview':
         return '打开任务预览'
     return {"morning_inspect_source": "读取监控来源", "morning_prepare_source_watch": "准备环境驻守",
-            "morning_inspect_page": "查看网页", "morning_prepare_watch": "准备网页驻守", "morning_watches": "管理驻守"}.get(name, name or "工具")
+            "morning_inspect_page": "查看网页", "morning_prepare_watch": "准备网页驻守", "morning_watches": "管理驻守",
+            "morning_plan": "任务计划", "morning_session_msg": "会话协作"}.get(name, name or "工具")
+
+
+def _args_summary(args):
+    if not isinstance(args, dict):
+        return ""
+    if "operation" in args:
+        return str(args["operation"])
+    if "command" in args:
+        return str(args.get("command", ""))[:80]
+    return ", ".join(list(args.keys())[:3])
 
 
 def content_text(content, kind="text"):
@@ -113,6 +124,7 @@ class NativeConversation:
         self.title = None
         self.accepted = {}
         self.exports = {}
+        self.on_tool_event = None  # Optional[Callable[[str, dict], None]]
         self.host.listeners.append(self._event)
 
     def _event(self, event):
@@ -128,7 +140,23 @@ class NativeConversation:
                 self.running_tools[event["toolCallId"]] = event
             elif kind == "tool_execution_end":
                 self.running_tools.pop(event["toolCallId"], None)
-            elif kind in ("auth_event", "auth_notice"):
+        if self.on_tool_event:
+            if kind == "tool_execution_start":
+                self.on_tool_event("pi.tool_start", {
+                    "tool_call_id": event.get("toolCallId"),
+                    "tool": event.get("toolName"),
+                    "label": tool_label(event.get("toolName"), event.get("args")),
+                    "args_summary": _args_summary(event.get("args"))
+                })
+            elif kind == "tool_execution_end":
+                self.on_tool_event("pi.tool_end", {
+                    "tool_call_id": event.get("toolCallId"),
+                    "tool": event.get("toolName"),
+                    "label": tool_label(event.get("toolName"), event.get("args")),
+                    "error": event.get("isError", False)
+                })
+        with self.lock:
+            if kind in ("auth_event", "auth_notice"):
                 self.notices = (self.notices + [{"id": self.host.revision, **event["data"]}])[-12:]
             elif kind == "extension_ui_request":
                 method = event.get("method")

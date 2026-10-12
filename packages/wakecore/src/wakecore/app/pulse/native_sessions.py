@@ -8,7 +8,7 @@ import os
 import threading
 import time
 import uuid
-from collections import ChainMap
+from collections import ChainMap, deque
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,6 +16,34 @@ from pathlib import Path
 from wakecore.adapters.agent_runtime.native import NativePiError, NativePiHost
 
 from .native_agent import NativeConversation
+
+
+class SessionBus:
+    """Lightweight in-process message bus for Pi session coordination.
+    Modeled on AutoGen GroupChat message structure: each message has a sender,
+    content, and optional role. Bounded at 200 messages; oldest drop first."""
+    MAX = 200
+
+    def __init__(self):
+        self._messages = deque(maxlen=self.MAX)
+        self._lock = threading.RLock()
+
+    def post(self, sender_session_id, role, content, metadata=None):
+        import time, uuid
+        msg = {"id": uuid.uuid4().hex[:16], "sender_session_id": sender_session_id,
+               "role": role, "content": content, "metadata": metadata or {},
+               "at": time.time()}
+        with self._lock:
+            self._messages.append(msg)
+        return msg
+
+    def read(self, since=0, limit=20, role=None):
+        with self._lock:
+            msgs = [m for m in self._messages if m["at"] > since and (role is None or m["role"] == role)]
+        return msgs[-limit:]
+
+    def public(self):
+        return self.read(limit=50)
 
 
 class NativeSessions:
@@ -30,6 +58,7 @@ class NativeSessions:
         self.registry_path = host.state_dir / 'pi' / 'runtime-sessions.json'
         self.directory = host.state_dir / 'pi' / 'runtime-state'
         self.limit, self.metadata = 4, {}
+        self.bus = SessionBus()
         if self.registry_path.exists():
             try:
                 saved = json.loads(self.registry_path.read_text())
@@ -77,9 +106,15 @@ class NativeSessions:
         slot = {'key': key, 'conversation': conversation, 'running': False, 'calls': 0, 'last_used': time.time(), 'created': time.time(), 'state': {}}
         self.slots[key] = slot
         host.listeners.append(lambda event: self._event(slot, event))
+        conversation.on_tool_event = self._on_tool_event
         if self.tool_factory:
             self._wire_tools(slot)
         return slot
+
+    def _on_tool_event(self, kind, payload):
+        platform = getattr(self.base, 'platform', None)
+        if platform and hasattr(platform, 'store'):
+            platform.store.event(kind, payload.get("tool_call_id", ""), payload)
 
     def _wire_tools(self, slot):
         handler = self.tool_factory()
@@ -246,6 +281,7 @@ class NativeSessions:
         result = slot['conversation'].snapshot()
         if result.get('state'):
             self._capture(slot, result['state'])
+        result['session_bus'] = self.bus.public()
         result['runtime_sessions'] = self.activities()
         result['runtime_limit'] = self.limit
         result['runtime_busy'] = bool(slot['running'] or slot['calls'])

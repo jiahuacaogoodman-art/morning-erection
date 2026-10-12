@@ -34,3 +34,21 @@ test('window overview uses accessibility tree labels, not images', async()=>{
   assert.ok(result.content[0].text.includes('等于'))
   assert.equal(result.details.windows.length,2)
 })
+
+test('morning_plan is registered and passes args through cleanly', async()=>{
+  const tools=new Map(), calls=[]
+  createMorningExtension({request:async(_m,p)=>{calls.push(p);return {plan_id:'plan_001',steps:[{id:'0',title:'Build',state:'planning'}]}}}, null, true)({registerTool:tool=>tools.set(tool.name,tool)})
+  assert.ok(tools.has('morning_plan'))
+  const result=await tools.get('morning_plan').execute('t',{operation:'create',title:'My plan',steps:['Build','Test']})
+  assert.ok(result.content[0].text.includes('plan_001'))
+  assert.equal(calls[0].args.operation,'create')
+})
+
+test('morning_session_msg is registered and passes args through cleanly', async()=>{
+  const tools=new Map(), calls=[]
+  createMorningExtension({request:async(_m,p)=>{calls.push(p);return {posted:true,message_id:'msg_abc'}}}, null, true)({registerTool:tool=>tools.set(tool.name,tool)})
+  assert.ok(tools.has('morning_session_msg'))
+  const result=await tools.get('morning_session_msg').execute('t',{operation:'post',role:'update',content:'Step 1 done'})
+  assert.ok(result.content[0].text.includes('msg_abc'))
+  assert.equal(calls[0].args.operation,'post')
+})
