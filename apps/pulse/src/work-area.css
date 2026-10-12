@@ -26,11 +26,12 @@
 .preference-title-row>.field-help{margin-left:4px}
 @media(max-width:640px){.field-help-content{left:auto;right:0}}
 
-/* Drag-to-resize strip between chat column and docked work area. */
-.work-area-resizer{position:absolute;left:-4px;top:0;bottom:0;width:8px;cursor:col-resize;z-index:10;touch-action:none}
+/* Drag-to-resize strip between chat column and docked work area.
+   Sits as a flex sibling in .chat-workspace — no absolute positioning. */
+.work-area-resizer{flex:none;width:8px;cursor:col-resize;z-index:5;touch-action:none;position:relative}
 .work-area-resizer::after{content:'';position:absolute;left:3px;top:0;bottom:0;width:2px;background:transparent;transition:background .15s}
-.work-area-resizer:hover::after,.work-area-resizer.dragging::after{background:var(--accent)}
-.work-area-resizer.dragging{cursor:col-resize}
+.work-area-resizer:hover::after{background:var(--line)}
+.work-area-resizer.dragging::after,.work-area-resizer:active::after{background:var(--accent)}
 @media(max-width:1024px){.work-area-resizer{display:none}}
 .task-work-area.floating{position:fixed;z-index:40;border:1px solid var(--line);border-radius:14px;resize:both;overflow:hidden;min-width:320px;min-height:260px;box-shadow:0 18px 50px #2a1a0a24,0 2px 8px #2a1a0a14;contain:none}
 .task-work-area.floating .task-work-area-body{height:100%}
