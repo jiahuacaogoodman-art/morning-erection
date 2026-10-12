@@ -22,6 +22,10 @@ LOG_DIR = Path.home() / "Library" / "Logs" / "Morning"
 
 # Resolve paths relative to this script's location (the repo root).
 REPO = Path(__file__).resolve().parent.parent
+# Use a stable shell launcher as the executable so macOS Accessibility permission
+# only needs to be granted once — even when the underlying Python binary changes
+# after a uv update or new cpython version.
+LAUNCHER = REPO / "scripts" / "pulse-launcher.sh"
 PYTHON = REPO / ".venv" / "bin" / "python"
 SCRIPT = REPO / "scripts" / "pulse.py"
 STATE = Path.home() / ".pulse"
