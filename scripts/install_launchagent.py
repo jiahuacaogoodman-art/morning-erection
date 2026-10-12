@@ -66,7 +66,7 @@ def plist_content(port: int) -> str:
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin:{REPO}/.venv/bin</string>
+        <string>{Path.home()}/.local/node/bin:/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin:{REPO}/.venv/bin</string>
         <key>HOME</key>
         <string>{Path.home()}</string>
     </dict>
