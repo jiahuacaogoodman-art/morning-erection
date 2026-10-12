@@ -64,6 +64,13 @@ async function startBackend() {
     ].join(':'),
     HOME: app.getPath('home'),
     PULSE_ELECTRON: '1',
+    // Ensure wakecore and wakecore-ui-runtime packages are importable even
+    // when the bundled .venv's pyvenv.cfg paths don't match the bundle layout.
+    PYTHONPATH: [
+      path.join(REPO_ROOT, 'packages', 'wakecore', 'src'),
+      path.join(REPO_ROOT, 'packages', 'wakecore-ui-runtime', 'src'),
+      process.env.PYTHONPATH || ''
+    ].filter(Boolean).join(':'),
   }
 
   backendProcess = spawn(PYTHON, [

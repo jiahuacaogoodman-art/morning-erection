@@ -73,6 +73,8 @@ def plist_content(port: int) -> str:
         <string>{Path.home()}/.local/node/bin:/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin:{REPO}/.venv/bin</string>
         <key>HOME</key>
         <string>{Path.home()}</string>
+        <key>PYTHONPATH</key>
+        <string>{REPO}/packages/wakecore/src:{REPO}/packages/wakecore-ui-runtime/src</string>
     </dict>
 </dict>
 </plist>

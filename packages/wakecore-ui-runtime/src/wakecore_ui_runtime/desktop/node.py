@@ -145,11 +145,22 @@ class ComputerNode:
         self.journal.mark_interrupted()
         self.lock = threading.RLock()
         self.policy_lock = threading.RLock()
+        # Pre-warm the MCP bridge in the background so the first inventory call
+        # doesn't pay the cold-start cost. Errors here are non-fatal; they'll
+        # surface naturally on the first real call.
+        threading.Thread(target=self._warmup, name="mcp-warmup", daemon=True).start()
         self.observations = {}
         self.policy = {"observe_apps": [], "operate_apps": [], "screens": [], "paused": False, "revision": 0,
                        "observe_all": True, "operate_all": False, "exclude_apps": list(DEFAULT_EXCLUDED)}
         if (self.root / "permissions.json").exists():
             self.policy.update(json.loads((self.root / "permissions.json").read_text()))
+
+    def _warmup(self):
+        """Start the MCP bridge process eagerly so the first inventory call is instant."""
+        try:
+            self.bridge.ensure()
+        except Exception:
+            pass  # Will surface naturally on first real call
 
     def configure(self, body):
         with self.policy_lock:
