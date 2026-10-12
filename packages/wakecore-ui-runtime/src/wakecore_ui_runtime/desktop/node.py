@@ -98,6 +98,34 @@ def screen_permission():
         return None
 
 
+def accessibility_permission(prompt=False):
+    """Check AX permission; if prompt=True, trigger the macOS dialog (for __main__ / explicit user request only)."""
+    if sys.platform != "darwin":
+        return None
+    try:
+        ax = ctypes.CDLL("/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices")
+        ax.AXIsProcessTrustedWithOptions.restype = ctypes.c_bool
+        ax.AXIsProcessTrustedWithOptions.argtypes = [ctypes.c_void_p]
+        if prompt:
+            # Build a CFDictionary {kAXTrustedCheckOptionPrompt: kCFBooleanTrue} via CoreFoundation.
+            cf = ctypes.CDLL("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")
+            cf.CFDictionaryCreate.restype = ctypes.c_void_p
+            cf.CFStringCreateWithCString.restype = ctypes.c_void_p
+            key_str = cf.CFStringCreateWithCString(None, b"AXTrustedCheckOptionPrompt", 0x08000100)
+            # kCFBooleanTrue is a fixed address in CFBoolean
+            cf.CFBooleanGetValue.restype = ctypes.c_bool
+            cftrue_sym = ctypes.c_void_p.in_dll(cf, "kCFBooleanTrue")
+            keys = (ctypes.c_void_p * 1)(key_str)
+            vals = (ctypes.c_void_p * 1)(cftrue_sym)
+            opts = cf.CFDictionaryCreate(None, keys, vals, 1, None, None)
+            result = bool(ax.AXIsProcessTrustedWithOptions(opts))
+        else:
+            result = bool(ax.AXIsProcessTrustedWithOptions(None))
+        return result
+    except (OSError, AttributeError, Exception):
+        return None
+
+
 class ComputerNode:
     def __init__(self, state_dir, bridge=None):
         self.root = Path(state_dir)
@@ -140,7 +168,9 @@ class ComputerNode:
     def health(self):
         return {"protocol": PROTOCOL, "name": "本机", "platform": os.uname().sysname,
                 "permissions": dict(self.policy), "actions": list(ACTION_FIELDS),
-                "bridge": self.bridge.status(), "model_required": False, "screen_recording_permission": screen_permission()}
+                "bridge": self.bridge.status(), "model_required": False,
+                "screen_recording_permission": screen_permission(),
+                "accessibility_permission": accessibility_permission()}
 
     def inventory(self):
         result = self.bridge.call("list_apps", {})
@@ -373,7 +403,9 @@ def make_node_handler(node, token):
                         raise ComputerError("invalid_body", "请求需要是对象。")
                 route = {("GET", "/health"): node.health, ("GET", "/inventory"): node.inventory, ("POST", "/overview"): lambda: node.overview(body),
                          ("POST", "/observe"): lambda: node.observe(body), ("POST", "/screen"): lambda: node.screen(body),
-                         ("POST", "/act"): lambda: node.act(body), ("POST", "/permissions"): lambda: node.configure(body)}.get((self.command, self.path))
+                         ("POST", "/act"): lambda: node.act(body), ("POST", "/permissions"): lambda: node.configure(body),
+                         ("POST", "/request_permissions"): lambda: {"accessibility_permission": accessibility_permission(prompt=True),
+                                                                      "screen_recording_permission": screen_permission()}}.get((self.command, self.path))
                 if route is None:
                     raise ComputerError("not_found", "设备接口不存在。", 404)
                 value = route()

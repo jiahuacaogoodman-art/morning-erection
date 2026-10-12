@@ -5,7 +5,7 @@ import type {WorkTarget} from './task-workspace'
 import {Disclosure} from './Motion'
 
 type Permissions={observe_apps:string[];operate_apps:string[];screens:number[];paused:boolean;observe_all?:boolean;operate_all?:boolean;exclude_apps?:string[]}
-type Inventory={apps:{id:string;name:string;running?:boolean;frontmost?:boolean}[];displays:{id:number;width:number;height:number}[];permissions:Permissions;display_error?:string}
+type Inventory={apps:{id:string;name:string;running?:boolean;frontmost?:boolean}[];displays:{id:number;width:number;height:number}[];permissions:Permissions;display_error?:string;accessibility_permission?:boolean|null;screen_recording_permission?:boolean|null}
 type Frame={id?:string;app?:string;display?:number;text?:string;window?:string;at?:number;image?:{mimeType:string;data:string}}
 type Tile={id:string;name:string;frontmost:boolean;observable:boolean;window?:string;error?:string;sensitive?:boolean;summary?:string[]}
 
@@ -52,6 +52,7 @@ export default function ComputerInspector({data,target,jobs,refresh}:{data:Platf
     void savePermissions({...old,...(screen!==null?{screens:[...new Set([...old.screens,screen])]}:{observe_apps:[...new Set([...old.observe_apps,app])],operate_apps:operate?[...new Set([...old.operate_apps,app])]:old.operate_apps})})
   }
   const setAutonomy=async(enabled:boolean)=>{setBusy('autonomy');setError('');try{await platformCommand('computer_autonomy',{enabled});refresh()}catch(e){setError((e as Error).message)}finally{setBusy('')}}
+  const requestSysPerms=async()=>{setBusy('sysperm');setError('');try{const r=await platformCommand<{accessibility_permission:boolean|null;screen_recording_permission:boolean|null}>('request_permissions',{device_id:device});setInventory(current=>current?{...current,...r}:current)}catch(e){setError((e as Error).message)}finally{setBusy('')}}
   const relevant=jobs.filter(job=>job.device_id===device&&(!app||job.app===app))
   const appName=tiles.find(item=>item.id===app)?.name||inventory?.apps.find(item=>item.id===app)?.name||app
   return <div className="task-computer-pane">
@@ -60,6 +61,9 @@ export default function ComputerInspector({data,target,jobs,refresh}:{data:Platf
       {permissions&&<div className="computer-access" role="group" aria-label="电脑权限">
         <label title="观察与操作全部应用和屏幕；钥匙串、密码管理器始终排除，含密码框的窗口不会截图也不会被操作"><input type="checkbox" checked={fullAccess} disabled={!!busy} onChange={e=>void savePermissions({...permissions,observe_all:e.target.checked,operate_all:e.target.checked})}/><ShieldCheck size={13}/><span><strong>完全访问</strong><small>全部应用 · 密码类除外</small></span></label>
         <label title="Agent 的电脑操作直接执行，不再逐步弹出确认；随时可以「暂停并接管」"><input type="checkbox" checked={!!data.modules.computer_autonomy} disabled={!!busy} onChange={e=>void setAutonomy(e.target.checked)}/><Zap size={13}/><span><strong>自主执行</strong><small>{data.modules.computer_autonomy?'不再逐步确认':'每步需要确认'}</small></span></label>
+        {inventory&&(inventory.accessibility_permission===false||inventory.screen_recording_permission===false)&&
+          <div className="computer-sys-perms"><span>{[inventory.accessibility_permission===false&&'辅助功能',inventory.screen_recording_permission===false&&'录屏'].filter(Boolean).join('、')}权限未开启</span>
+            <button type="button" className="text-button" disabled={busy==='sysperm'} onClick={()=>void requestSysPerms()}>{busy==='sysperm'?'正在请求…':'请求系统权限'}</button></div>}
       </div>}
       {error&&<p className="work-error" role="alert">{error}<button type="button" onClick={()=>void load()}>重试连接</button></p>}
       {!!tiles.length&&<section className="computer-windows" aria-label="主要窗口"><header><LayoutGrid size={12}/><span>主要窗口</span><time>{tilesAt?new Date(tilesAt*1000).toLocaleTimeString('zh-CN'):''}</time></header>

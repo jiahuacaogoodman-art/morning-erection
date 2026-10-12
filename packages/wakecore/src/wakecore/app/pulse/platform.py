@@ -183,6 +183,8 @@ class Platform:
             return result
         if op == "overview":
             return self.devices.call(device, "/overview", {"limit": body.get("limit", 6)})
+        if op == "request_permissions":
+            return self.devices.call(device, "/request_permissions", {})
         if op == "computer_autonomy":
             if type(body.get("enabled")) is not bool:
                 raise ValueError("自主执行需要是开关。")
