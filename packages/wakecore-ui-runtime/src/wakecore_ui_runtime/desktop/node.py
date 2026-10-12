@@ -84,7 +84,16 @@ def default_bridge_command():
     if binary:
         return [binary]
     source = Path.home() / "src/codex-computer-use-mcp/dist/mcp-server.js"
-    return [shutil.which("node") or "node", str(source)]
+    # shutil.which("node") fails inside bundled/sandboxed environments where PATH
+    # doesn't include the user's local node install. Fall back to known locations.
+    node = (shutil.which("node") or
+            next((p for p in [
+                str(Path.home() / ".local/node/bin/node"),
+                "/usr/local/bin/node",
+                "/opt/homebrew/bin/node",
+                "/usr/bin/node",
+            ] if Path(p).exists()), "node"))
+    return [node, str(source)]
 
 
 def screen_permission():
