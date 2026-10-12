@@ -1,4 +1,5 @@
 import {streamSimple as streamResponses} from '@earendil-works/pi-ai/api/openai-responses'
+import {streamSimple as streamCompletions} from '@earendil-works/pi-ai/api/openai-completions'
 
 const modelFields = ['input','inputLimits','reasoning','cost','contextWindow','maxTokens','thinkingLevelMap','promptCache','compat','samplingParams']
 
@@ -34,6 +35,9 @@ export function registerGateways(modelRuntime, profiles) {
     if (profile.api === 'openai-responses' && profile.request_format === 'instructions') {
       provider.streamSimple = (model, context, options) => streamResponses(model, context, {...options,
         onPayload:async (payload, currentModel) => instructionsPayload(await options?.onPayload?.(payload, currentModel) ?? payload)})
+    } else if (profile.api === 'openai-completions') {
+      // Chat Completions protocol — for Qwen and other providers that don't support /v1/responses.
+      provider.streamSimple = (model, context, options) => streamCompletions(model, context, options)
     }
     modelRuntime.registerProvider(profile.provider_id, provider)
     registered.delete(profile.provider_id)
