@@ -60,7 +60,7 @@ class McpBridge:
             err = os.fdopen(fd, "ab")
         try:
             self._proc = subprocess.Popen(self.command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=err,
-                                          env=self.env, bufsize=0, start_new_session=True)
+                                          env=self.env, bufsize=0)
         except OSError as e:
             raise McpError("mcp_unavailable", f"cannot start the bridge ({type(e).__name__})") from None
         finally:
