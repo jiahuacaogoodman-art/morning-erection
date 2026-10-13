@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from 'react'
 import {Eye,Hand,LayoutGrid,Play,RefreshCw,ShieldCheck} from 'lucide-react'
-import {platformCommand,type ComputerJob,type PlatformState} from './Platform'
+import {platformCommand,type PlatformState} from './Platform'
 import type {WorkTarget} from './task-workspace'
 import {Disclosure} from './Motion'
 
@@ -11,7 +11,7 @@ type Tile={id:string;name:string;frontmost:boolean;observable:boolean;window?:st
 
 const imageSrc=(image:{mimeType:string;data:string})=>`data:${image.mimeType};base64,${image.data}`
 
-export default function ComputerInspector({data,target,jobs,refresh}:{data:PlatformState;target:WorkTarget;jobs:ComputerJob[];refresh:()=>void}){
+export default function ComputerInspector({data,target,refresh}:{data:PlatformState;target:WorkTarget;refresh:()=>void}){
   const [device,setDevice]=useState(target.device||'local'),[app,setApp]=useState(target.app||''),[inventory,setInventory]=useState<Inventory|null>(null),[frame,setFrame]=useState<Frame|null>(null)
   const [busy,setBusy]=useState(''),[error,setError]=useState(''),[live,setLive]=useState(true),[grant,setGrant]=useState(false)
   const [tiles,setTiles]=useState<Tile[]>([]),[tilesAt,setTilesAt]=useState(0)
@@ -51,7 +51,6 @@ export default function ComputerInspector({data,target,jobs,refresh}:{data:Platf
     void savePermissions({...old,...(screen!==null?{screens:[...new Set([...old.screens,screen])]}:{observe_apps:[...new Set([...old.observe_apps,app])],operate_apps:operate?[...new Set([...old.operate_apps,app])]:old.operate_apps})})
   }
   const requestSysPerms=async(permission:'accessibility'|'screen_recording')=>{setBusy('sysperm');setError('');try{const r=await platformCommand<{accessibility_permission:boolean|null;screen_recording_permission:boolean|null}>('open_system_settings',{device_id:device,permission});setInventory(current=>current?{...current,...r}:current)}catch(e){setError((e as Error).message)}finally{setBusy('')}}
-  const relevant=jobs.filter(job=>job.device_id===device&&(!app||job.app===app))
   const appName=tiles.find(item=>item.id===app)?.name||inventory?.apps.find(item=>item.id===app)?.name||app
   return <div className="task-computer-pane" data-autonomy={data.modules.computer_autonomy?'on':'off'}>
     <div className="computer-target"><select aria-label="任务执行设备" value={device} onChange={event=>setDevice(event.target.value)}>{data.devices.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select><button type="button" className="icon-button" disabled={!!busy} aria-label="重新读取设备" title="重新读取设备" onClick={()=>void load()}><RefreshCw size={13}/></button><span className="target-status">{busy==='inventory'?'正在连接':inventory?'已连接':<button type="button" className="text-button" disabled={!!busy} onClick={()=>void load()}>连接设备</button>}</span></div>
@@ -59,7 +58,7 @@ export default function ComputerInspector({data,target,jobs,refresh}:{data:Platf
       {error&&<p className="work-error" role="alert">{error}<button type="button" onClick={()=>void load()}>重试连接</button></p>}
       {inventory&&(inventory.accessibility_permission===false||inventory.screen_recording_permission===false)&&<div className="computer-perms-row">{inventory.accessibility_permission===false&&<button type="button" className="computer-perm-btn" disabled={busy==='sysperm'} onClick={()=>void requestSysPerms('accessibility')} title="打开系统设置 → 辅助功能"><ShieldCheck size={11}/>辅助功能权限</button>}{inventory.screen_recording_permission===false&&<button type="button" className="computer-perm-btn" disabled={busy==='sysperm'} onClick={()=>void requestSysPerms('screen_recording')} title="打开系统设置 → 录屏"><Eye size={11}/>录屏权限</button>}</div>}
       {!!tiles.length&&<section className="computer-windows" aria-label="主要窗口"><header><LayoutGrid size={12}/><span>主要窗口</span><time>{tilesAt?new Date(tilesAt*1000).toLocaleTimeString('zh-CN'):''}</time></header>
-        <div className="computer-window-grid">{tiles.map(tile=><button type="button" key={tile.id} className={`computer-window-tile ${tile.id===app?'selected':''}`} aria-pressed={tile.id===app} title={tile.window||tile.name} onClick={()=>setApp(tile.id===app?'':tile.id)}>
+        <div className="computer-window-grid">{tiles.map(tile=><button type="button" key={tile.id} className={`computer-window-tile ${tile.id===app?'selected':''}`} aria-pressed={tile.id===app} title={tile.window||tile.name} onClick={()=>{if(tile.id===app){setApp('')}else{setApp(tile.id);void platformCommand('activate',{device_id:device,app:tile.id}).catch(()=>{})}}}>
           <span className="computer-window-thumb">{tile.observable&&!tile.sensitive&&tile.summary?.length?<span className="computer-window-tree">{tile.summary.map((s,i)=><span key={i}>{s}</span>)}</span>:<span className="computer-window-label">{!tile.observable?'未授权':tile.sensitive?'含密码框':tile.error?'无法读取':'等待观察'}</span>}</span>
           <span className="computer-window-name">{tile.frontmost&&<i aria-label="前台"/>}{tile.name}</span>
         </button>)}</div></section>}
@@ -70,7 +69,6 @@ export default function ComputerInspector({data,target,jobs,refresh}:{data:Platf
       {frame?.at&&<time className="computer-observe-time">{new Date(frame.at*1000).toLocaleTimeString('zh-CN')}</time>}
       {frame?.image&&frame.text&&<Disclosure title="观察内容"><pre className="computer-observation-text">{frame.text}</pre></Disclosure>}</>}
       {inventory&&<div className="computer-takeover"><button type="button" className="secondary-button" disabled={!!busy} onClick={()=>void control(inventory.permissions.paused?'resume_computer':'takeover')}>{inventory.permissions.paused?<Play size={13}/>:<Hand size={13}/>} {inventory.permissions.paused?'交还 Agent':'暂停并接管'}</button>{inventory.permissions.paused&&<span>已暂停</span>}</div>}
-      {!!relevant.length&&<div className="computer-step-list" aria-label="当前任务电脑步骤">{relevant.slice(0,6).map(job=><div key={job.id}><i className={`resource-dot ${job.state}`}/><span>{job.goal}</span><small>{({queued:'等待设备',approval:'待批准',running:'执行中',observed:'已执行',failed:'未执行',unknown:'结果待核验',rejected:'已拒绝',cancelled:'已停止',expired:'已过期'} as Record<string,string>)[job.state]||job.state}</small></div>)}</div>}
     </>}
   </div>
 }

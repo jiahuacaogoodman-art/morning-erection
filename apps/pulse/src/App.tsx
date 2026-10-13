@@ -301,7 +301,7 @@ export default function App() {
         </form>
         {!!pi?.state?.pendingMessageCount && <div className="composer-pending" role="status">{pi.state.pendingMessageCount} 条待处理</div>}
       </footer>
-      </section>{platform.data&&(<><WorkAreaResizer asideRef={workAreaRef} floating={!!(localStorage.getItem('pulse:work-floating')==='1'&&!matchMedia('(max-width:720px)').matches)} open={!!workTarget}/><WorkArea asideRef={workAreaRef} target={workTarget} onTarget={openWork} platform={platform.data} jobs={platform.data.computer.filter(job=>job.session_path===pi?.state?.sessionFile)} data={taskWorkspace.data} error={taskWorkspace.error} refresh={taskWorkspace.refresh} refreshPlatform={platform.refresh}/></>)}</div>
+      </section>{platform.data&&(<><WorkAreaResizer asideRef={workAreaRef} floating={!!(localStorage.getItem('pulse:work-floating')==='1'&&!matchMedia('(max-width:720px)').matches)} open={!!workTarget}/><WorkArea asideRef={workAreaRef} target={workTarget} onTarget={openWork} platform={platform.data} data={taskWorkspace.data} error={taskWorkspace.error} refresh={taskWorkspace.refresh} refreshPlatform={platform.refresh}/></>)}</div>
       </>}
     </main>
     {toast && <div className="toast" role="status"><AlertCircle size={15}/>{toast}<button className="icon-button" aria-label="关闭提示" onClick={() => setToast('')}><X size={14}/></button></div>}

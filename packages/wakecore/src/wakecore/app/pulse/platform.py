@@ -192,6 +192,8 @@ class Platform:
             return self.devices.call(device, "/request_permissions", {})
         if op == "open_system_settings":
             return self.devices.call(device, "/open_system_settings", {"permission": body.get("permission", "accessibility")})
+        if op == "activate":
+            return self.devices.call(device, "/activate", {"app": body.get("app")})
         if op == "computer_autonomy":
             if type(body.get("enabled")) is not bool:
                 raise ValueError("自主执行需要是开关。")

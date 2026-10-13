@@ -3,7 +3,7 @@ import type React from 'react'
 import {Globe,Monitor,TerminalSquare,X,ChevronUp,PictureInPicture2,PanelRight,Zap} from 'lucide-react'
 import {gsap,useGSAP,useReducedMotion} from './Motion'
 import {workspaceCommand,type PreviewRecord,type WorkspaceState,type WorkTab,type WorkTarget} from './task-workspace'
-import {platformCommand,type ComputerJob,type PlatformState} from './Platform'
+import {platformCommand,type PlatformState} from './Platform'
 import ComputerInspector from './ComputerInspector'
 import {piControl} from './NativePi'
 import './work-area.css'
@@ -46,7 +46,7 @@ export function WorkAreaResizer({asideRef,floating,open}:{asideRef:React.RefObje
   return <div className="work-area-resizer" aria-hidden="true" onPointerDown={onDown}/>
 }
 
-export function WorkArea({target,onTarget,platform,jobs,data,error,refresh,refreshPlatform,asideRef}:{target:WorkTarget|null;onTarget:(target:WorkTarget|null)=>void;platform:PlatformState;jobs:ComputerJob[];data:WorkspaceState|null;error:string;refresh:()=>void;refreshPlatform:()=>void;asideRef?:React.RefObject<HTMLElement|null>}){
+export function WorkArea({target,onTarget,platform,data,error,refresh,refreshPlatform,asideRef}:{target:WorkTarget|null;onTarget:(target:WorkTarget|null)=>void;platform:PlatformState;data:WorkspaceState|null;error:string;refresh:()=>void;refreshPlatform:()=>void;asideRef?:React.RefObject<HTMLElement|null>}){
   const [shown,setShown]=useState(!!target),[vertical,setVertical]=useState(()=>matchMedia('(max-width:1024px)').matches)
   const [narrow,setNarrow]=useState(()=>matchMedia('(max-width:720px)').matches)
   const [floatPref,setFloatPref]=useState(()=>localStorage.getItem('pulse:work-floating')==='1'),[place,setPlace]=useState(savedPlace)
@@ -113,6 +113,6 @@ export function WorkArea({target,onTarget,platform,jobs,data,error,refresh,refre
       }
     {(error||actionError)&&<div className="work-error" role="alert">{error||actionError}<button type="button" onClick={refresh}>重新读取</button></div>}
     <section className="task-work-area-content" aria-label={`${activeTab?.name}工作区`}><Suspense fallback={<div className="work-empty">正在打开…</div>}>
-      {active.kind==='computer'?<ComputerInspector data={platform} target={active} jobs={jobs} refresh={refreshPlatform}/>:data&&!data.session_id?<div className="work-empty"><button type="button" className="secondary-button" onClick={()=>void piControl('start_agent').then(refresh).catch(e=>setActionError(e.message))}>启动 Pi 会话</button></div>:data?active.kind==='terminal'?<TerminalPane data={data} selected={active.id} onSelect={id=>onTarget({kind:'terminal',id})} refresh={refresh} onPreview={url=>void preview(url)}/>:<PreviewPane data={data} selected={active.id} onSelect={id=>onTarget({kind:'preview',id})} refresh={refresh}/>:<div className="work-empty">正在连接当前会话…</div>}
+      {active.kind==='computer'?<ComputerInspector data={platform} target={active} refresh={refreshPlatform}/>:data&&!data.session_id?<div className="work-empty"><button type="button" className="secondary-button" onClick={()=>void piControl('start_agent').then(refresh).catch(e=>setActionError(e.message))}>启动 Pi 会话</button></div>:data?active.kind==='terminal'?<TerminalPane data={data} selected={active.id} onSelect={id=>onTarget({kind:'terminal',id})} refresh={refresh} onPreview={url=>void preview(url)}/>:<PreviewPane data={data} selected={active.id} onSelect={id=>onTarget({kind:'preview',id})} refresh={refresh}/>:<div className="work-empty">正在连接当前会话…</div>}
     </Suspense></section></div></aside>
 }

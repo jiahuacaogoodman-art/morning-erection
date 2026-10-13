@@ -407,6 +407,24 @@ class ComputerNode:
     def close(self):
         self.bridge.close()
 
+    def activate(self, body):
+        """Bring an app's window to the foreground using AppleScript."""
+        app = body.get("app")
+        if not app or not isinstance(app, str):
+            raise ComputerError("invalid_app", "需要提供应用 bundle ID。")
+        self._allowed(app)
+        try:
+            import subprocess as _sp
+            script = f'tell application id "{app}" to activate'
+            result = _sp.run(["osascript", "-e", script], capture_output=True, timeout=5)
+            if result.returncode != 0:
+                raise ComputerError("activate_failed", f"激活失败：{result.stderr.decode().strip()}")
+        except ComputerError:
+            raise
+        except Exception as exc:
+            raise ComputerError("activate_failed", f"激活应用时出错：{exc}") from exc
+        return {"activated": app}
+
 
 def index_missing(arguments):
     return arguments.get("element_index") is None
@@ -441,6 +459,7 @@ def make_node_handler(node, token):
                 route = {("GET", "/health"): node.health, ("GET", "/inventory"): node.inventory, ("POST", "/overview"): lambda: node.overview(body),
                          ("POST", "/observe"): lambda: node.observe(body), ("POST", "/screen"): lambda: node.screen(body),
                          ("POST", "/act"): lambda: node.act(body), ("POST", "/permissions"): lambda: node.configure(body),
+                         ("POST", "/activate"): lambda: node.activate(body),
                          ("POST", "/open_system_settings"): lambda: node.open_system_settings(body.get("permission", "accessibility"))}.get((self.command, self.path))
                 if route is None:
                     raise ComputerError("not_found", "设备接口不存在。", 404)
