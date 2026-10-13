@@ -66,3 +66,49 @@
 .computer-window-name{display:flex;align-items:center;gap:5px;font-size:10px;line-height:1.4;padding:0 2px 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .computer-window-name i{width:5px;height:5px;border-radius:50%;background:var(--success);flex:none}
 @media(prefers-reduced-motion:reduce){.computer-window-tile{transition:none}}
+
+/* ── ComputerInspector v2 ── */
+.ci-root{display:flex;flex-direction:column;gap:0;overflow:auto;scrollbar-width:thin;overscroll-behavior:contain;padding:10px 11px;min-height:0;flex:1}
+.ci-bar{display:flex;align-items:center;gap:5px;margin-bottom:8px}
+.ci-bar select{padding:4px 7px;font-size:11px;min-height:28px;max-width:160px;min-width:0;background:var(--surface);border-radius:6px}
+.ci-status{font-size:9px;color:var(--ink-secondary);margin-left:auto;line-height:1.4}
+.ci-refresh{height:26px!important;min-height:26px!important;width:26px!important;min-width:26px!important}
+.ci-perm-strip{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px}
+.ci-perm-chip{display:inline-flex;align-items:center;gap:4px;font-size:10px;min-height:26px;padding:3px 7px;border:1px solid var(--line-light);border-radius:6px;color:var(--accent);background:color-mix(in srgb,var(--accent) 5%,var(--surface))}
+.ci-perm-chip:hover{background:color-mix(in srgb,var(--accent) 11%,var(--surface))}
+.ci-error{font-size:10px;color:var(--danger,#c0392b);padding:6px 8px;border-radius:6px;background:color-mix(in srgb,var(--danger,#c0392b) 7%,transparent);margin-bottom:8px;display:flex;align-items:center;gap:8px;line-height:1.5}
+.ci-error button{font-size:10px;margin-left:auto;flex:none}
+/* grid: each tile is a card; selected one spans full width and expands */
+.ci-grid{display:flex;flex-direction:column;gap:6px;margin-bottom:4px}
+.ci-tile{border:1px solid var(--line-light);border-radius:10px;overflow:hidden;background:var(--surface);transition:border-color .12s,box-shadow .12s}
+.ci-tile:hover:not(.ci-tile--active){border-color:var(--line)}
+.ci-tile--active{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 14%,transparent)}
+.ci-tile--front .ci-tile-header{background:color-mix(in srgb,var(--accent) 4%,var(--surface))}
+.ci-tile-header{display:flex;align-items:center;gap:7px;padding:7px 10px;min-height:36px;width:100%;text-align:left;cursor:pointer;border-radius:0}
+.ci-tile-header:hover{background:var(--surface-under)}
+.ci-tile--active .ci-tile-header{background:color-mix(in srgb,var(--accent) 6%,var(--surface))}
+.ci-front-dot{width:6px;height:6px;border-radius:50%;background:var(--success);flex:none}
+.ci-tile-name{font-size:11px;font-weight:500;color:var(--ink);flex:none;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ci-tile-win{font-size:9.5px;color:var(--ink-secondary);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* expanded body */
+.ci-tile-body{border-top:1px solid var(--line-light)}
+.ci-frame-img{display:block;width:100%;height:auto;object-fit:contain;max-height:340px}
+.ci-frame-text{white-space:pre-wrap;word-break:break-word;font:9.5px/1.7 var(--mono);max-height:260px;overflow:auto;margin:0;padding:10px 12px;color:var(--ink-secondary)}
+.ci-frame-empty{display:flex;align-items:center;gap:8px;padding:18px 12px;color:var(--ink-tertiary);font-size:10px}
+.ci-frame-time{display:block;font-size:8.5px;color:var(--ink-tertiary);text-align:right;padding:3px 10px 6px;line-height:1.4}
+.ci-auth{display:flex;align-items:center;gap:7px;padding:8px 12px;font-size:10px;color:var(--ink-secondary);background:color-mix(in srgb,var(--accent) 4%,transparent);flex-wrap:wrap}
+.ci-auth svg{color:var(--accent);flex:none}
+.ci-auth .text-button{font-size:10px;padding:2px 5px;min-height:24px}
+/* more apps */
+.ci-more{margin-top:4px;margin-bottom:6px}
+.ci-more-toggle{font-size:10px;display:flex;align-items:center;gap:4px;color:var(--ink-secondary);padding:4px 2px;min-height:28px}
+.ci-more-list{display:flex;flex-direction:column;gap:1px;margin-top:4px;border:1px solid var(--line-light);border-radius:8px;overflow:hidden}
+.ci-more-item{padding:6px 10px;font-size:10px;text-align:left;color:var(--ink);background:var(--surface);min-height:0;border-radius:0}
+.ci-more-item:hover{background:var(--surface-under)}
+.ci-more-item.active{color:var(--accent);background:color-mix(in srgb,var(--accent) 6%,var(--surface))}
+/* takeover — subtle footer */
+.ci-takeover{display:flex;align-items:center;gap:8px;border-top:1px solid var(--line-light);padding:8px 0;margin-top:auto}
+.ci-takeover-btn{display:inline-flex;align-items:center;gap:5px;font-size:10px;min-height:28px;padding:4px 8px;border:1px solid var(--line-light);border-radius:7px;color:var(--ink-secondary);background:var(--surface)}
+.ci-takeover-btn:hover{background:var(--surface-under);border-color:var(--line);color:var(--ink)}
+.ci-paused-label{font-size:9px;color:var(--ink-secondary)}
+@media(max-width:720px){.ci-tile-name{max-width:90px}.ci-frame-img{max-height:200px}}
