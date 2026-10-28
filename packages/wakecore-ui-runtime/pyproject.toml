@@ -22,7 +22,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "playwright>=1.45",
+    "playwright>=1.64.1",
     "morning-erection==0.3.0",
 ]
 
