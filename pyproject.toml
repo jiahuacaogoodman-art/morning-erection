@@ -10,10 +10,10 @@ morning-erection-ui-runtime = { workspace = true }
 
 [dependency-groups]
 dev = [
-    "pytest>=8",
-    "ruff>=0.6",
+    "pytest>=9.2.0",
+    "ruff>=0.17.3",
     "pgserver>=0.1.4; sys_platform != 'win32'",
-    "psycopg[binary]>=3.1",
+    "psycopg[binary]>=3.3.6",
 ]
 
 [tool.pytest.ini_options]
