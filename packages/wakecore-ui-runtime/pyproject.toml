@@ -27,7 +27,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-desktop = ["mss>=10,<11", "Pillow>=11,<13", "watchdog>=6,<7"]
+desktop = ["mss>=10,<11", "Pillow>=11,<13", "watchdog>=7.0.0,<8"]
 
 [project.scripts]
 wakecore-ui-runtime = "wakecore_ui_runtime.server:main"
